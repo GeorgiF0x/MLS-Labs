@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MLS · Consumo eléctrico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Doto:wght@500;800&family=Geist+Mono:wght@400;500&family=Geist:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #040404;
+    --ink-2: #1a1a1a;
+    --paper: #f4f4f4;
+    --line-light: #d8d9d9;
+    --line-dark: #2a2a2a;
+    --grey: #595a5a;
+    --grey-on-dark: #b1b3b3;
+    --red: #d71921;
+
+    --dot: "Doto", monospace;
+    --serif: "Instrument Serif", serif;
+    --sans: "Geist", system-ui, sans-serif;
+    --mono: "Geist Mono", ui-monospace, monospace;
+
+    --gutter: clamp(16px, 4.5vw, 72px);
+    --ease: cubic-bezier(.16, 1, .3, 1);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--black); color: #fff; font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--red); color: #fff; }
+  :focus-visible { outline: 1px solid var(--red); outline-offset: 3px; }
+
+  /* ---------- slide surfaces ---------- */
+  .deck { position: relative; height: 100vh; height: 100dvh; overflow: hidden; }
+  .slide {
+    --fg: #fff; --fg-2: var(--grey-on-dark); --rule: var(--line-dark); --bg: var(--black); --dots: rgba(255,255,255,.16);
+    position: absolute; inset: 0;
+    display: none;
+    padding: 96px var(--gutter) 88px;
+    background-color: var(--bg);
+    background-image: radial-gradient(circle, var(--dots) 1px, transparent 1.4px);
+    background-size: 28px 28px;
+    background-position: center;
+    color: var(--fg);
+    overflow-y: auto;
+  }
+  .slide.light { --fg: var(--black); --fg-2: var(--grey); --rule: var(--line-light); --bg: var(--paper); --dots: rgba(4,4,4,.13); }
+  .slide.active { display: grid; }
+  .slide.active .enter { animation: enter .7s var(--ease) both; }
+  .slide.active .enter:nth-child(2) { animation-delay: .06s; }
+  .slide.active .enter:nth-child(3) { animation-delay: .12s; }
+  @keyframes enter { from { opacity: 0; filter: blur(6px); transform: translateY(10px); } }
+
+  /* ---------- chrome ---------- */
+  .chrome {
+    position: fixed; z-index: 10; top: 16px; left: 50%; transform: translateX(-50%);
+    width: min(600px, calc(100% - 32px)); height: 44px;
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+    padding: 0 16px; border-radius: 6px;
+    background: rgba(216,217,217,.86); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    color: var(--black); font: 500 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .04em;
+  }
+  .chrome .brand { font: 800 17px/1 var(--dot); letter-spacing: .02em; }
+  .chrome .right { justify-self: end; font-variant-numeric: tabular-nums; }
+
+  /* ---------- dot progress ---------- */
+  .progress {
+    position: fixed; z-index: 10; bottom: 24px; left: var(--gutter); right: var(--gutter);
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    font: 500 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .04em;
+    color: var(--chrome-fg, var(--grey-on-dark)); transition: color .4s; pointer-events: none;
+  }
+  .progress > * { pointer-events: auto; }
+  .dots { display: flex; gap: 6px; flex-wrap: wrap; }
+  .dots button {
+    width: 16px; height: 18px; padding: 0; border: 0; background: none; cursor: pointer; color: inherit;
+    display: grid; place-items: center;
+  }
+  .dots button::after {
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor; opacity: .35; transition: opacity .3s, transform .4s var(--ease), background .3s;
+  }
+  .dots button:hover::after { opacity: .8; }
+  .dots button[aria-current="true"]::after { background: var(--red); opacity: 1; transform: scale(1.5); }
+  .nav-btns { display: flex; gap: 8px; }
+  .nav-btns button {
+    width: 36px; height: 36px; border-radius: 4px; cursor: pointer;
+    border: 1px solid currentColor; background: none; color: inherit;
+    display: grid; place-items: center; transition: background .2s, color .2s;
+  }
+  .nav-btns button:hover { background: var(--red); border-color: var(--red); color: #fff; }
+  .nav-btns svg { width: 14px; height: 14px; }
+
+  /* ---------- type ---------- */
+  .label { font: 500 11px/1.4 var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--fg-2); }
+  .serif { font-family: var(--serif); font-weight: 400; letter-spacing: -.01em; line-height: 1.02; margin: 0; text-wrap: balance; }
+  .d1 { font-size: clamp(48px, 7.4vw, 96px); }
+  .d2 { font-size: clamp(36px, 4.6vw, 64px); }
+  .d3 { font-size: clamp(28px, 3.2vw, 44px); line-height: 1.1; }
+  .serif em { font-style: italic; }
+  .matrix { font-family: var(--dot); font-weight: 800; line-height: .9; margin: 0; font-variant-numeric: tabular-nums; }
+  p { font-size: clamp(15px, 1.25vw, 18px); line-height: 1.6; margin: 0; color: var(--fg-2); max-width: 62ch; }
+  p strong, li strong, td strong { color: var(--fg); font-weight: 500; }
+  code { white-space: nowrap; font: 400 .88em var(--mono); color: var(--fg); background: color-mix(in srgb, var(--fg) 7%, transparent); padding: .1em .4em; border-radius: 3px; }
+  pre {
+    margin: 0; font: 400 clamp(12px, 1vw, 14px)/1.7 var(--mono); color: var(--fg);
+    padding: 20px 22px; border-radius: 6px; overflow: auto;
+    background: color-mix(in srgb, var(--fg) 5%, var(--bg));
+    border: 1px solid var(--rule);
+  }
+  pre .c { color: var(--fg-2); }
+  pre .k { color: var(--red); }
+
+  /* ---------- layouts ---------- */
+  .cover { align-content: center; gap: 40px; }
+  .cover .matrix { font-size: clamp(88px, 17vw, 240px); letter-spacing: -.02em; }
+  .cover .matrix .pix { display: inline-block; width: .1em; height: .1em; margin: 0 .12em; background: var(--red); vertical-align: baseline; }
+  .meta { display: flex; flex-wrap: wrap; gap: 12px 48px; border-top: 1px solid var(--rule); padding-top: 20px; }
+  .meta div { display: grid; gap: 6px; }
+  .meta b { font: 500 14px var(--mono); color: var(--fg); }
+
+  .step { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 72px); align-items: center; }
+  .step .text { display: grid; gap: 22px; align-content: center; }
+  .step .num { font-size: clamp(72px, 9vw, 132px); color: var(--fg); }
+  .step .num small { font-size: max(.32em, 20px); color: var(--fg-2); margin-left: .2em; }
+  .points { list-style: none; padding: 0; margin: 0; display: grid; border-top: 1px solid var(--rule); }
+  .points li { padding: 12px 0; border-bottom: 1px solid var(--rule); font-size: clamp(14px, 1.15vw, 16px); line-height: 1.55; color: var(--fg-2); }
+
+  figure { margin: 0; display: grid; gap: 10px; min-width: 0; }
+  .frame { border-radius: 6px; overflow: hidden; background: var(--ink-2); box-shadow: 0 30px 60px -20px rgba(0,0,0,.6); }
+  .frame img { display: block; width: 100%; height: auto; max-height: calc(100dvh - 260px); object-fit: contain; object-position: top left; }
+  .frame.missing { display: grid; place-items: center; min-height: 260px; background: transparent; box-shadow: none; border: 1px dashed var(--fg-2); color: var(--fg-2); font: 500 11px/1.6 var(--mono); text-transform: uppercase; letter-spacing: .06em; text-align: center; padding: 24px; }
+  .frame.missing img { display: none; }
+  .frame.missing::before { content: "Captura pendiente\A" attr(data-src); white-space: pre; }
+  figcaption { display: flex; justify-content: space-between; gap: 12px; }
+  .stack { display: grid; gap: 14px; }
+  .stack .frame img { max-height: calc((100dvh - 300px) / 2); }
+  .stack .frame.missing { min-height: 150px; }
+
+  .brief { align-content: center; gap: 56px; }
+  .spec { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--rule); }
+  .spec.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .spec div { padding: 18px 20px 0 0; display: grid; gap: 8px; align-content: start; }
+  .spec div + div { padding-left: 20px; border-left: 1px solid var(--rule); }
+  .spec p { font-size: 15px; }
+  .spec .matrix { font-size: clamp(32px, 3.4vw, 48px); color: var(--fg); }
+
+  .table-wrap { align-content: center; gap: 32px; }
+  .table-wrap > .head { display: grid; gap: 14px; }
+  .scroll-x { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; max-width: 1180px; font-size: clamp(14px, 1.1vw, 16px); }
+  caption { caption-side: top; text-align: left; padding-bottom: 12px; font: 500 11px/1.4 var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--fg-2); }
+  th, td { text-align: left; padding: 12px 16px 12px 0; border-bottom: 1px solid var(--rule); vertical-align: baseline; color: var(--fg-2); line-height: 1.5; }
+  th { font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+  td.n, th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  td.best { color: var(--red); font-weight: 500; }
+  td:first-child { color: var(--fg); }
+  .tag { display: inline-block; font: 500 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .06em; padding: 4px 6px; border-radius: 3px; border: 1px solid var(--rule); color: var(--fg-2); white-space: nowrap; }
+  .tag.on { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
+  .reflect { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 96px); align-content: center; }
+  .reflect .q { display: grid; gap: 28px; align-content: start; }
+  .reflect .q .matrix { font-size: clamp(56px, 6vw, 88px); color: var(--red); }
+  .reflect .a { display: grid; gap: 18px; align-content: start; padding-top: 8px; }
+  .reflect .a p { color: var(--fg); opacity: .82; }
+  .pairs { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--rule); }
+  .pairs div { padding: 16px 20px 16px 0; border-bottom: 1px solid var(--rule); display: grid; gap: 6px; }
+  .pairs div:nth-child(even) { padding-left: 20px; border-left: 1px solid var(--rule); }
+  .pairs p { font-size: 15px; }
+
+  /* ---------- index ---------- */
+  .toc { align-content: center; gap: 40px; }
+  .toc ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 48px; border-top: 1px solid var(--rule); }
+  .toc li { border-bottom: 1px solid var(--rule); }
+  .toc a { display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; align-items: baseline; padding: 13px 0; color: var(--fg); text-decoration: none; font-size: clamp(15px, 1.2vw, 18px); transition: color .2s; }
+  .toc a:hover { color: var(--red); }
+  .toc .i { font: 500 11px var(--mono); color: var(--fg-2); }
+  .toc .p { font: 500 12px var(--mono); color: var(--fg-2); font-variant-numeric: tabular-nums; }
+
+  /* ---------- bar chart (MAE) ---------- */
+  .chart { display: grid; gap: 18px; width: 100%; max-width: 1100px; }
+  .chart .row { display: grid; grid-template-columns: 190px 1fr; gap: 16px; align-items: center; }
+  .chart .name { font-size: 15px; color: var(--fg); }
+  .chart .bars { display: grid; gap: 6px; }
+  .bar { position: relative; height: 22px; display: flex; align-items: center; }
+  .bar i { display: block; height: 100%; width: calc(var(--v) / 120 * 100%); border-radius: 2px; transform-origin: left; }
+  .slide.active .bar i { animation: grow .9s var(--ease) both; }
+  @keyframes grow { from { transform: scaleX(0); } }
+  .bar.r i { background: color-mix(in srgb, var(--fg) 22%, transparent); }
+  .bar.a i { background: var(--fg); }
+  .bar.a.top i { background: var(--red); }
+  .bar b { margin-left: 10px; font: 500 12px var(--mono); color: var(--fg-2); font-variant-numeric: tabular-nums; }
+  .bar.top b { color: var(--red); }
+  .baseline { position: relative; height: 0; border-top: 1px dashed var(--fg-2); margin-left: 206px; width: calc((100% - 206px) * 115.62 / 120); }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+  .legend span { display: inline-flex; align-items: center; gap: 8px; }
+  .legend i { width: 18px; height: 8px; border-radius: 2px; display: inline-block; }
+
+  .closing { align-content: center; gap: 32px; }
+  .refs { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--rule); max-width: 1100px; }
+  .refs li { padding: 12px 0; border-bottom: 1px solid var(--rule); font-size: clamp(13px, 1.05vw, 15px); line-height: 1.55; color: var(--fg-2); }
+  .refs a { color: var(--fg); text-decoration-color: var(--red); text-underline-offset: 3px; word-break: break-word; }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 900px) {
+    .slide { padding: 80px 16px 96px; align-content: start !important; }
+    .step, .reflect { grid-template-columns: 1fr; }
+    .spec, .spec.three { grid-template-columns: 1fr 1fr; }
+    .spec div:nth-child(odd) { padding-left: 0; border-left: 0; }
+    .pairs, .toc ol { grid-template-columns: 1fr; }
+    .pairs div:nth-child(even) { padding-left: 0; border-left: 0; }
+    .chart .row { grid-template-columns: 1fr; gap: 6px; }
+    .baseline { margin-left: 0; width: calc(100% * 115.62 / 120); }
+    .dots { display: none; }
+    .progress { justify-content: flex-end; }
+    .chrome .left { display: none; }
+    .chrome { grid-template-columns: auto 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .slide.active .enter, .slide.active .bar i { animation: none; }
+  }
+  @media print {
+    @page { size: A4 landscape; margin: 0; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .deck { height: auto; overflow: visible; }
+    .slide { display: grid !important; position: relative; min-height: 100vh; break-after: page; overflow: visible; padding-top: 56px; }
+    .slide::after { content: attr(data-page); position: absolute; right: var(--gutter); bottom: 24px; font: 500 11px var(--mono); color: var(--fg-2); }
+    .slide .enter, .bar i { animation: none !important; }
+    .chrome, .progress { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="chrome" aria-label="Presentación">
+  <span class="left" id="section">Inicio</span>
+  <span class="brand">MLS</span>
+  <span class="right" id="counter">01 / 24</span>
+</header>
+
+<main class="deck">
+
+  <!-- 01 · Portada -->
+  <section class="slide cover active" data-section="Inicio">
+    <h1 class="matrix enter" data-scramble aria-label="kWh">KWH<span class="pix" aria-hidden="true"></span>ML</h1>
+    <p class="serif d2 enter" style="max-width:20ch;color:var(--fg)">Predecir cuántos kilovatios hora consume una vivienda <em>antes de que llegue la factura</em>.</p>
+    <div class="meta enter">
+      <div><span class="label">Práctica</span><b>Desarrollo, entrenamiento y evaluación de modelos de regresión</b></div>
+      <div><span class="label">Módulo</span><b>Sistemas de Aprendizaje Automático</b></div>
+      <div><span class="label">Alumno</span><b>Georgi Aleksandrov</b></div>
+      <div><span class="label">Entorno</span><b>Python · scikit-learn · Google Colab</b></div>
+    </div>
+  </section>
+
+  <!-- 02 · Índice -->
+  <section class="slide light toc" data-section="Índice">
+    <h2 class="serif d2 enter">Índice</h2>
+    <ol class="enter">
+      <li><a href="#3"><span class="i">01</span>El encargo<span class="p">p. 03</span></a></li>
+      <li><a href="#14"><span class="i">07</span>Entrenamiento de los modelos<span class="p">p. 14</span></a></li>
+      <li><a href="#4"><span class="i">02</span>Entorno de trabajo<span class="p">p. 04</span></a></li>
+      <li><a href="#15"><span class="i">08</span>Resultados: MAE<span class="p">p. 15</span></a></li>
+      <li><a href="#5"><span class="i">03</span>Inspección del dataset<span class="p">p. 05</span></a></li>
+      <li><a href="#17"><span class="i">09</span>Sobreajuste y validación cruzada<span class="p">p. 17</span></a></li>
+      <li><a href="#7"><span class="i">04</span>Cribado de datos<span class="p">p. 07</span></a></li>
+      <li><a href="#19"><span class="i">10</span>Preguntas de evaluación<span class="p">p. 19</span></a></li>
+      <li><a href="#8"><span class="i">05</span>Selección de variables<span class="p">p. 08</span></a></li>
+      <li><a href="#22"><span class="i">11</span>Conclusión<span class="p">p. 22</span></a></li>
+      <li><a href="#12"><span class="i">06</span>Preparación de los datos<span class="p">p. 12</span></a></li>
+      <li><a href="#23"><span class="i">12</span>Bibliografía y anexo<span class="p">p. 23</span></a></li>
+    </ol>
+    <div class="enter" style="display:grid;gap:12px">
+      <span class="label">Índice de tablas</span>
+      <ol style="grid-template-columns:repeat(3,minmax(0,1fr))">
+        <li><a href="#7"><span class="i">T1</span>Nulos frente a filas completas<span class="p">p. 07</span></a></li>
+        <li><a href="#9"><span class="i">T2</span>Conjuntos de variables<span class="p">p. 09</span></a></li>
+        <li><a href="#11"><span class="i">T3</span>Variables descartadas<span class="p">p. 11</span></a></li>
+        <li><a href="#12"><span class="i">T4</span>Codificación por tipo<span class="p">p. 12</span></a></li>
+        <li><a href="#14"><span class="i">T5</span>Modelos elegidos<span class="p">p. 14</span></a></li>
+        <li><a href="#16"><span class="i">T6</span>MAE por modelo y conjunto<span class="p">p. 16</span></a></li>
+        <li><a href="#17"><span class="i">T7</span>Random Forest ajustado<span class="p">p. 17</span></a></li>
+        <li><a href="#18"><span class="i">T8</span>Validación cruzada<span class="p">p. 18</span></a></li>
+        <li><a href="#21"><span class="i">T9</span>Comparativa para producción<span class="p">p. 21</span></a></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 03 · Encargo -->
+  <section class="slide brief" data-section="Encargo">
+    <p class="serif d2 enter" style="max-width:24ch;color:var(--fg)">«Construir diferentes modelos capaces de predecir cuántos kilovatios hora consume mensualmente una vivienda.»</p>
+    <div class="spec enter">
+      <div><span class="label">Dataset</span><p class="matrix" data-scramble>30000</p><p>Registros de viviendas, 24 columnas numéricas y categóricas.</p></div>
+      <div><span class="label">Objetivo</span><p class="matrix">KWH</p><p><code>consumo_mensual_kwh</code>: regresión supervisada.</p></div>
+      <div><span class="label">División</span><p class="matrix" data-scramble>70/30</p><p>Entrenamiento y test, con dos conjuntos de variables.</p></div>
+      <div><span class="label">Métrica</span><p class="matrix">MAE</p><p>Error medio absoluto en kWh: cuanto menor, mejor.</p></div>
+    </div>
+  </section>
+
+  <!-- 04 · Entorno -->
+  <section class="slide step" data-section="Entorno">
+    <div class="text enter">
+      <p class="matrix num" data-scramble>00<small>/env</small></p>
+      <h2 class="serif d3">El cuaderno, ejecutado en <em>Google Colab</em></h2>
+      <ul class="points">
+        <li>Desarrollo en local con un entorno virtual ligero (<code>.venv</code>, ~600 MB) y JupyterLab.</li>
+        <li>Ejecución final en <strong>Google Colab</strong>: el mismo cuaderno, sin cambios.</li>
+        <li>La primera celda imprime <strong>fecha, hora (Europe/Madrid) y entorno</strong>: Colab trabaja en UTC.</li>
+        <li><code>random_state=42</code> en división y modelos: resultados reproducibles.</li>
+      </ul>
+    </div>
+    <figure class="enter">
+      <div class="frame"><img src="img/01-colab-entorno.png" alt="Google Colab con la celda de fecha, hora y entorno"></div>
+      <figcaption class="label"><span>Google Colab</span><span>consumo_electrico.ipynb</span></figcaption>
+    </figure>
+  </section>
+
+  <!-- 05 · Inspección -->
+  <section class="slide step" data-section="Inspección">
+    <div class="text enter">
+      <p class="matrix num" data-scramble>01<small>/eda</small></p>
+      <h2 class="serif d3">Conocer los datos antes de entrenar</h2>
+      <ul class="points">
+        <li><strong>12 numéricas y 10 categóricas</strong>, además del identificador y el objetivo.</li>
+        <li><strong>61 filas con algún nulo</strong> (0,2 %), repartidas en 11 columnas.</li>
+        <li><strong>0 duplicados</strong>, incluso ignorando <code>id_registro</code>.</li>
+        <li>Sin valores imposibles: superficie de 30 a 284 m², consumo de 118 a 1268 kWh, y siempre mínima ≤ media ≤ máxima.</li>
+        <li>Categorías sin erratas: la variable objetivo tiene forma de campana, media 606 kWh.</li>
+      </ul>
+    </div>
+    <figure class="stack enter">
+      <div class="frame"><img src="img/02-nulos.png" alt="Tabla de nulos por columna y duplicados"></div>
+      <div class="frame"><img src="img/03-distribucion.png" alt="Histograma y boxplot de consumo_mensual_kwh"></div>
+      <figcaption class="label"><span>Parte 1</span><span>nulos · duplicados · distribución</span></figcaption>
+    </figure>
+  </section>
+
+  <!-- 06 · Hallazgo -->
+  <section class="slide light reflect" data-section="Inspección">
+    <div class="q enter">
+      <p class="matrix" data-scramble>16°C</p>
+      <h2 class="serif d2">El mismo clima en enero que en julio</h2>
+    </div>
+    <div class="a enter">
+      <p>La temperatura media ronda los <strong>16 °C en los 12 meses</strong> y en las cuatro zonas climáticas. En el mundo real es imposible: el dataset es sintético.</p>
+      <p>Consecuencia para el modelo: <code>mes</code> y <code>zona_climatica</code> <strong>no transportan información climática</strong>. Si el clima influye, lo hará a través de la temperatura, que es la causa directa.</p>
+      <figure>
+        <div class="frame"><img src="img/04-temperatura-mes.png" alt="Temperatura media por mes"></div>
+        <figcaption class="label"><span>Parte 1.6</span><span>temperatura media por mes</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 07 · Cribado -->
+  <section class="slide table-wrap" data-section="Cribado">
+    <div class="head enter">
+      <p class="matrix" style="font-size:clamp(56px,6vw,88px)" data-scramble>02</p>
+      <h2 class="serif d2">Eliminar 61 filas sin introducir sesgo</h2>
+      <p>Borrar filas solo sesga el modelo si las que faltan son distintas al resto. Se comprueba antes de decidir:</p>
+    </div>
+    <div class="scroll-x enter">
+      <table>
+        <caption>T1 · Consumo (kWh) de las filas con nulos frente a las completas</caption>
+        <thead><tr><th>Grupo</th><th class="n">Filas</th><th class="n">Media</th><th class="n">Mediana</th><th class="n">Desv. típica</th></tr></thead>
+        <tbody>
+          <tr><td>Filas con algún nulo</td><td class="n">61</td><td class="n">610,6</td><td class="n">599,3</td><td class="n">150,2</td></tr>
+          <tr><td>Filas completas</td><td class="n">29.939</td><td class="n">606,2</td><td class="n">597,9</td><td class="n">146,0</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="spec three enter">
+      <div><span class="label">0,2 % de los datos</span><p>Perder 61 de 30.000 filas no reduce la información disponible.</p></div>
+      <div><span class="label">Nulos aleatorios</span><p>Mismo consumo que el resto: eliminarlas no sesga.</p></div>
+      <div><span class="label">No imputar</span><p>Inventar valores exige calcularlos solo con el entrenamiento (<em>data leakage</em>): no compensa.</p></div>
+    </div>
+  </section>
+
+  <!-- 08 · Criterios -->
+  <section class="slide brief" data-section="Variables">
+    <div class="enter" style="display:grid;gap:14px">
+      <p class="matrix" style="font-size:clamp(56px,6vw,88px)" data-scramble>03</p>
+      <p class="serif d2" style="max-width:22ch;color:var(--fg)">Tres preguntas antes de aceptar <em>cada variable</em></p>
+    </div>
+    <div class="spec three enter">
+      <div><span class="label">01 · ¿kWh o euros?</span><p>El objetivo es energía. La tarifa cambia lo que se paga, no lo que se consume: <code>tipo_tarifa</code> fuera.</p></div>
+      <div><span class="label">02 · ¿Causa o indicador?</span><p>Mejor la causa directa: el aislamiento antes que la edad, la temperatura antes que la zona.</p></div>
+      <div><span class="label">03 · ¿Repite información?</span><p>Una variable redundante ocupa un hueco sin aportar nada nuevo.</p></div>
+    </div>
+    <p class="enter">La lógica propone las variables; <strong>los datos las verifican</strong>.</p>
+  </section>
+
+  <!-- 09 · Conjuntos -->
+  <section class="slide light table-wrap" data-section="Variables">
+    <h2 class="serif d2 enter">Dos conjuntos: 5 y 8 variables</h2>
+    <div class="scroll-x enter">
+      <table>
+        <caption>T2 · Variables elegidas y relación esperada con el consumo</caption>
+        <thead><tr><th>Variable</th><th>Conjunto</th><th>Por qué afecta a los kWh</th><th class="n">Dato</th></tr></thead>
+        <tbody>
+          <tr><td><code>numero_personas</code></td><td><span class="tag on">Reducido</span></td><td>Más duchas, lavadoras, cocina e iluminación.</td><td class="n">r = 0,56</td></tr>
+          <tr><td><code>superficie_m2</code></td><td><span class="tag on">Reducido</span></td><td>Más metros que iluminar y climatizar.</td><td class="n">r = 0,42</td></tr>
+          <tr><td><code>numero_electrodomesticos</code></td><td><span class="tag on">Reducido</span></td><td>Más aparatos conectados.</td><td class="n">r = 0,28</td></tr>
+          <tr><td><code>teletrabajo</code></td><td><span class="tag on">Reducido</span></td><td>Más horas en casa con equipos encendidos.</td><td class="n">Δ 50 kWh</td></tr>
+          <tr><td><code>nivel_ocupacion_diurna</code></td><td><span class="tag on">Reducido</span></td><td>Presencia durante el día.</td><td class="n">Δ 35 kWh</td></tr>
+          <tr><td><code>tipo_agua_caliente</code></td><td><span class="tag">Amplio</span></td><td>Con termo eléctrico toda esa energía pasa por el contador; con gas no; la solar térmica solo usa apoyo eléctrico.</td><td class="n">Δ 149 kWh</td></tr>
+          <tr><td><code>paneles_solares</code></td><td><span class="tag">Amplio</span></td><td>La vivienda autoproduce y toma menos de la red.</td><td class="n">Δ 89 kWh</td></tr>
+          <tr><td><code>tipo_vivienda</code></td><td><span class="tag">Amplio</span></td><td>Una casa tiene más fachada expuesta que un piso de igual superficie.</td><td class="n">Δ 41 kWh</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="enter label">r = correlación con el consumo · Δ = diferencia entre la categoría que más y la que menos consume</p>
+  </section>
+
+  <!-- 10 · Verificación -->
+  <section class="slide step" data-section="Variables">
+    <div class="text enter">
+      <p class="matrix num" data-scramble>03<small>/check</small></p>
+      <h2 class="serif d3">La intuición falló una vez, <em>los datos lo detectaron</em></h2>
+      <ul class="points">
+        <li>Calefacción y aire acondicionado consumen mucho en una casa real, pero aquí apenas cambian el consumo: <strong>17 y 1 kWh</strong>.</li>
+        <li><code>teletrabajo</code> pesa más que la ocupación diurna, y en este dataset son independientes.</li>
+        <li>Las temperaturas tienen una correlación de solo <strong>−0,08</strong>.</li>
+      </ul>
+    </div>
+    <figure class="stack enter">
+      <div class="frame"><img src="img/05-correlaciones.png" alt="Correlación de las variables numéricas con el consumo"></div>
+      <div class="frame"><img src="img/06-categoricas.png" alt="Consumo medio por categoría de las variables seleccionadas"></div>
+      <figcaption class="label"><span>Parte 3.2</span><span>correlaciones · medias por categoría</span></figcaption>
+    </figure>
+  </section>
+
+  <!-- 11 · Descartadas -->
+  <section class="slide table-wrap" data-section="Variables">
+    <h2 class="serif d2 enter">Lo que se queda fuera, y por qué</h2>
+    <div class="scroll-x enter">
+      <table>
+        <caption>T3 · Variables descartadas</caption>
+        <thead><tr><th>Variable</th><th>Criterio</th><th>Evidencia</th></tr></thead>
+        <tbody>
+          <tr><td><code>habitaciones</code></td><td><span class="tag">Redundante</span></td><td>Correlación de <strong>0,85</strong> con <code>superficie_m2</code>.</td></tr>
+          <tr><td><code>potencia_contratada_kw</code></td><td><span class="tag">Redundante</span></td><td>Correlación de <strong>0,78</strong> con <code>numero_personas</code>; además es consecuencia del consumo previsto, no su causa.</td></tr>
+          <tr><td><code>tipo_tarifa</code></td><td><span class="tag">Precio</span></td><td>Cambia lo que se paga, no los kWh (Δ 6 kWh).</td></tr>
+          <tr><td><code>zona_climatica</code>, <code>mes</code></td><td><span class="tag">Indicador</span></td><td>Misma temperatura en todas las zonas y meses (Δ 7 kWh; r = −0,01).</td></tr>
+          <tr><td><code>edad_vivienda_anios</code></td><td><span class="tag">Indicador</span></td><td>Aproximación indirecta del aislamiento (r = 0,05).</td></tr>
+          <tr><td><code>id_registro</code></td><td><span class="tag">Enunciado</span></td><td>Solo identifica la fila.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 12 · Preparación -->
+  <section class="slide light step" data-section="Preparación">
+    <div class="text enter">
+      <p class="matrix num" data-scramble>04<small>/prep</small></p>
+      <h2 class="serif d3">Números que no inventen <em>un orden</em></h2>
+      <p>Codificar Piso=0, Casa=1 y Adosado=2 haría creer al modelo que un adosado es «el doble» que una casa. One-Hot da a cada categoría su propia columna.</p>
+      <ul class="points">
+        <li><strong>70 / 30</strong>: 20.957 filas para entrenar y 8.982 para test.</li>
+        <li>El preprocesado se ajusta <strong>solo con el entrenamiento</strong> dentro de un <code>Pipeline</code>: sin <em>data leakage</em>.</li>
+      </ul>
+    </div>
+    <div class="scroll-x enter">
+      <table>
+        <caption>T4 · Codificación por tipo de variable</caption>
+        <thead><tr><th>Tipo</th><th>Transformación</th><th>Motivo</th></tr></thead>
+        <tbody>
+          <tr><td>Numéricas</td><td><code>StandardScaler</code></td><td>La regresión lineal y la red neuronal combinan pesos: sin escalar, la superficie (30–284) dominaría a las personas (1–8).</td></tr>
+          <tr><td>Binarias</td><td>0 / 1</td><td>Dos valores: no hay orden falso que inventar.</td></tr>
+          <tr><td>Nominales</td><td>One-Hot</td><td>Sin orden entre categorías.</td></tr>
+          <tr><td>Ocupación diurna</td><td>One-Hot</td><td>Tiene orden, pero el efecto no es lineal: Baja 597 ≈ Media 596 &lt; Alta 631 kWh.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 13 · Pipeline -->
+  <section class="slide step" data-section="Preparación">
+    <div class="text enter">
+      <p class="matrix num" data-scramble>04<small>/prep</small></p>
+      <h2 class="serif d3">5 variables → 7 columnas, 8 → 14</h2>
+      <ul class="points">
+        <li>Una función construye el preprocesado para <strong>cualquier conjunto</strong> de variables.</li>
+        <li>One-Hot multiplica las columnas: una por categoría.</li>
+        <li><code>handle_unknown="ignore"</code>: una categoría nueva no rompe la predicción.</li>
+      </ul>
+    </div>
+<pre class="enter"><span class="k">def</span> make_preprocessor(features):
+    numericas = [c <span class="k">for</span> c <span class="k">in</span> features <span class="k">if</span> c <span class="k">in</span> num_cols]
+    binarias  = [c <span class="k">for</span> c <span class="k">in</span> features <span class="k">if</span> c <span class="k">in</span> BINARIAS]
+    nominales = [c <span class="k">for</span> c <span class="k">in</span> features
+                 <span class="k">if</span> c <span class="k">in</span> cat_cols <span class="k">and</span> c <span class="k">not in</span> BINARIAS]
+    <span class="k">return</span> ColumnTransformer([
+        (<span class="c">"num"</span>, StandardScaler(), numericas),
+        (<span class="c">"bin"</span>, OneHotEncoder(drop=<span class="c">"if_binary"</span>), binarias),
+        (<span class="c">"cat"</span>, OneHotEncoder(handle_unknown=<span class="c">"ignore"</span>), nominales),
+    ])
+
+pipe = Pipeline([(<span class="c">"prep"</span>, make_preprocessor(SET_AMPLIO)),
+                 (<span class="c">"model"</span>, GradientBoostingRegressor())])
+pipe.fit(X_train[SET_AMPLIO], y_train)</pre>
+  </section>
+
+  <!-- 14 · Modelos -->
+  <section class="slide light table-wrap" data-section="Modelos">
+    <div class="head enter">
+      <p class="matrix" style="font-size:clamp(56px,6vw,88px)" data-scramble>05</p>
+      <h2 class="serif d2">Cuatro formas distintas de aprender</h2>
+      <p>Se descarta XGBoost: es de la misma familia que Gradient Boosting y la comparación aportaría poco.</p>
+    </div>
+    <div class="scroll-x enter">
+      <table>
+        <caption>T5 · Modelos elegidos</caption>
+        <thead><tr><th>Modelo</th><th>Familia</th><th>Cómo aprende</th><th>Por qué</th></tr></thead>
+        <tbody>
+          <tr><td>Regresión lineal</td><td><span class="tag">Lineal</span></td><td>Una fórmula: consumo = b₀ + b₁·x₁ + … + bₙ·xₙ</td><td>Referencia simple, rápida e interpretable.</td></tr>
+          <tr><td>Random Forest</td><td><span class="tag">Bagging</span></td><td>Cientos de árboles en paralelo que se promedian.</td><td>Capta relaciones no lineales; robusto.</td></tr>
+          <tr><td>Gradient Boosting</td><td><span class="tag">Boosting</span></td><td>Árboles en cadena: cada uno corrige al anterior.</td><td>De lo mejor en datos tabulares.</td></tr>
+          <tr><td>Red neuronal (MLP)</td><td><span class="tag">Neuronal</span></td><td>Capas 64 → 32 que combinan las variables.</td><td>Relaciones complejas; exige escalado.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 15 · Resultados chart -->
+  <section class="slide table-wrap" data-section="Resultados">
+    <div class="head enter">
+      <p class="matrix" style="font-size:clamp(56px,6vw,88px)" data-scramble>06</p>
+      <h2 class="serif d2">Las variables pesan más <em>que el algoritmo</em></h2>
+    </div>
+    <div class="chart enter" role="img" aria-label="MAE en test por modelo: reducido y amplio">
+      <div class="row"><span class="name">Red neuronal</span><div class="bars">
+        <div class="bar r"><i style="--v:73.80"></i><b>73,80</b></div>
+        <div class="bar a top"><i style="--v:49.08"></i><b>49,08</b></div></div></div>
+      <div class="row"><span class="name">Gradient Boosting</span><div class="bars">
+        <div class="bar r"><i style="--v:74.16"></i><b>74,16</b></div>
+        <div class="bar a"><i style="--v:50.08"></i><b>50,08</b></div></div></div>
+      <div class="row"><span class="name">Regresión lineal</span><div class="bars">
+        <div class="bar r"><i style="--v:73.75"></i><b>73,75</b></div>
+        <div class="bar a"><i style="--v:52.57"></i><b>52,57</b></div></div></div>
+      <div class="row"><span class="name">Random Forest</span><div class="bars">
+        <div class="bar r"><i style="--v:81.52"></i><b>81,52</b></div>
+        <div class="bar a"><i style="--v:54.69"></i><b>54,69</b></div></div></div>
+      <div class="baseline" aria-hidden="true"></div>
+    </div>
+    <div class="legend label enter">
+      <span><i style="background:color-mix(in srgb,#fff 22%,transparent)"></i>Reducido · 5 variables</span>
+      <span><i style="background:#fff"></i>Amplio · 8 variables</span>
+      <span><i style="background:var(--red)"></i>Menor MAE</span>
+      <span><i style="border-top:1px dashed var(--grey-on-dark);height:0"></i>Predecir siempre la media · 115,62</span>
+    </div>
+  </section>
+
+  <!-- 16 · Resultados tabla -->
+  <section class="slide light step" data-section="Resultados">
+    <div class="text enter">
+      <h2 class="serif d3">MAE en test (kWh)</h2>
+      <table>
+        <caption>T6 · MAE por modelo y conjunto de variables</caption>
+        <thead><tr><th>Modelo</th><th class="n">Reducido</th><th class="n">Amplio</th><th class="n">Mejora</th></tr></thead>
+        <tbody>
+          <tr><td>Red neuronal</td><td class="n">73,80</td><td class="n best">49,08</td><td class="n">33,5 %</td></tr>
+          <tr><td>Gradient Boosting</td><td class="n">74,16</td><td class="n">50,08</td><td class="n">32,5 %</td></tr>
+          <tr><td>Regresión lineal</td><td class="n best">73,75</td><td class="n">52,57</td><td class="n">28,7 %</td></tr>
+          <tr><td>Random Forest</td><td class="n">81,52</td><td class="n">54,69</td><td class="n">32,9 %</td></tr>
+        </tbody>
+      </table>
+      <ul class="points">
+        <li>Ampliar las variables mejora <strong>todos</strong> los modelos entre un 29 y un 34 %. Cambiar de modelo, como mucho un 10 %.</li>
+        <li>La regresión lineal compite de tú a tú: las relaciones del dataset son <strong>casi lineales</strong>.</li>
+      </ul>
+    </div>
+    <figure class="enter">
+      <div class="frame"><img src="img/07-mae.png" alt="Tabla y gráfico de MAE en Google Colab"></div>
+      <figcaption class="label"><span>Parte 6</span><span>MAE train · test · tiempo</span></figcaption>
+    </figure>
+  </section>
+
+  <!-- 17 · Sobreajuste RF -->
+  <section class="slide step" data-section="Sobreajuste">
+    <div class="text enter">
+      <p class="matrix num" data-scramble>07<small>/fit</small></p>
+      <h2 class="serif d3">Random Forest se aprendía <em>las casas de memoria</em></h2>
+      <p>Sin límites, cada árbol crece hasta dejar <strong>una vivienda por hoja</strong> y copia su consumo, ruido incluido. La solución es limitar la complejidad, no reducir datos: con menos ejemplos es aún más fácil memorizar.</p>
+      <table>
+        <caption>T7 · Random Forest antes y después del ajuste</caption>
+        <thead><tr><th>Configuración</th><th class="n">Train</th><th class="n">Test</th><th class="n">Brecha</th></tr></thead>
+        <tbody>
+          <tr><td>Por defecto</td><td class="n">20,38</td><td class="n">54,69</td><td class="n best">34,31</td></tr>
+          <tr><td><code>max_depth=12</code> · <code>min_samples_leaf=5</code></td><td class="n">43,24</td><td class="n">52,60</td><td class="n">9,36</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <figure class="enter">
+      <div class="frame"><img src="img/08-rf-ajuste.png" alt="GridSearchCV de Random Forest en Google Colab"></div>
+      <figcaption class="label"><span>Parte 7</span><span>GridSearchCV · 15 combinaciones · cv=5</span></figcaption>
+    </figure>
+  </section>
+
+  <!-- 18 · CV + importancia -->
+  <section class="slide light step" data-section="Validación">
+    <div class="text enter">
+      <h2 class="serif d3">¿Es real una diferencia de <em>1 kWh</em>?</h2>
+      <table>
+        <caption>T8 · Validación cruzada de 5 particiones (conjunto amplio)</caption>
+        <thead><tr><th>Modelo</th><th class="n">MAE medio</th><th class="n">± desv.</th></tr></thead>
+        <tbody>
+          <tr><td>Red neuronal</td><td class="n best">49,14</td><td class="n">0,66</td></tr>
+          <tr><td>Gradient Boosting</td><td class="n">50,09</td><td class="n">0,58</td></tr>
+          <tr><td>Regresión lineal</td><td class="n">52,47</td><td class="n">0,76</td></tr>
+          <tr><td>Random Forest ajustado</td><td class="n">52,99</td><td class="n">0,50</td></tr>
+        </tbody>
+      </table>
+      <ul class="points">
+        <li>La red neuronal gana en <strong>las 5 particiones</strong>: la diferencia es real, pero es solo un 2 %.</li>
+        <li>Gradient Boosting confirma la selección: personas 38 %, superficie 22 %, agua caliente eléctrica 16 %.</li>
+      </ul>
+    </div>
+    <figure class="enter">
+      <div class="frame"><img src="img/09-cv-importancia.png" alt="Validación cruzada e importancia de variables en Google Colab"></div>
+      <figcaption class="label"><span>Parte 8</span><span>cross_val_score · feature_importances_</span></figcaption>
+    </figure>
+  </section>
+
+  <!-- 19 · R1 -->
+  <section class="slide reflect" data-section="Evaluación 1/3">
+    <div class="q enter">
+      <p class="matrix" data-scramble>R1</p>
+      <h2 class="serif d2">¿Qué algoritmo ha obtenido el menor MAE?</h2>
+    </div>
+    <div class="a enter">
+      <p>La <strong>red neuronal con el conjunto amplio: 49,08 kWh</strong>, menos de la mitad del error de predecir siempre la media (115,62). Gradient Boosting queda a 1 kWh.</p>
+      <p>Con el conjunto reducido, la regresión lineal y la red neuronal empatan (73,75 frente a 73,80). Que el modelo más simple compita tanto indica que el consumo depende de las variables de forma <strong>casi lineal</strong>: los modelos complejos tienen poco extra que descubrir.</p>
+      <p>La hipótesis inicial («ganará la regresión lineal») se cumple solo con el conjunto reducido.</p>
+    </div>
+  </section>
+
+  <!-- 20 · R2 -->
+  <section class="slide reflect" data-section="Evaluación 2/3">
+    <div class="q enter">
+      <p class="matrix" data-scramble>R2</p>
+      <h2 class="serif d2">¿Qué influencia ha tenido la selección de variables?</h2>
+    </div>
+    <div class="a enter">
+      <p>Es el factor <strong>más importante</strong>. Pasar de 5 a 8 variables reduce el MAE entre un <strong>29 y un 34 %</strong> en los cuatro modelos; elegir otro algoritmo con las mismas variables cambia como mucho un 10 %.</p>
+      <div class="pairs">
+        <div><span class="label">Lo que aporta el amplio</span><p><code>tipo_agua_caliente</code> y <code>paneles_solares</code> explican gran parte del consumo que el reducido no veía.</p></div>
+        <div><span class="label">Lo que no aporta</span><p>Variables redundantes como <code>habitaciones</code> o <code>potencia</code> ocuparían huecos sin información nueva.</p></div>
+      </div>
+      <p>Un buen algoritmo no compensa no tener la información correcta.</p>
+    </div>
+  </section>
+
+  <!-- 21 · R3 -->
+  <section class="slide light reflect" data-section="Evaluación 3/3">
+    <div class="q enter">
+      <p class="matrix" data-scramble>R3</p>
+      <h2 class="serif d2">¿Qué modelo pondría en producción?</h2>
+      <p><strong>Gradient Boosting con el conjunto amplio.</strong> Está a un 2 % del mejor error, se puede explicar y es más fácil de mantener.</p>
+    </div>
+    <div class="a enter">
+      <table>
+        <caption>T9 · Comparativa para producción (conjunto amplio)</caption>
+        <thead><tr><th>Modelo</th><th class="n">MAE</th><th>Explicable</th><th>Riesgo</th></tr></thead>
+        <tbody>
+          <tr><td>Red neuronal</td><td class="n">49,08</td><td>Caja negra</td><td>Sensible a sus hiperparámetros</td></tr>
+          <tr><td><strong>Gradient Boosting</strong></td><td class="n best">50,08</td><td>Importancia de variables</td><td>Bajo</td></tr>
+          <tr><td>Regresión lineal</td><td class="n">52,57</td><td>Total: un coeficiente por variable</td><td>No capta no linealidades</td></tr>
+          <tr><td>Random Forest</td><td class="n">52,60</td><td>Importancia de variables</td><td>Sobreajuste sin ajustar</td></tr>
+        </tbody>
+      </table>
+      <p>La red neuronal predice algo mejor, pero sus miles de pesos no tienen un significado interpretable: si una predicción falla, no se puede explicar a un cliente. El tiempo de entrenamiento no decide (0,8 s frente a 1,3 s): en producción se entrena pocas veces y ambos predicen al instante.</p>
+    </div>
+  </section>
+
+  <!-- 22 · Cierre -->
+  <section class="slide closing" data-section="Conclusión">
+    <p class="serif d1 enter" style="max-width:16ch;color:var(--fg)">Elegir bien los datos <em>vale más que elegir el algoritmo</em>.</p>
+    <div class="spec enter">
+      <div><span class="label">Error final</span><p class="matrix" data-scramble>50</p><p>kWh de error medio con Gradient Boosting.</p></div>
+      <div><span class="label">Frente a la media</span><p class="matrix" data-scramble>-57%</p><p>de error respecto a no usar ningún modelo.</p></div>
+      <div><span class="label">Por las variables</span><p class="matrix" data-scramble>-32%</p><p>de error al pasar de 5 a 8 variables.</p></div>
+      <div><span class="label">Sobreajuste</span><p class="matrix" data-scramble>34→9</p><p>kWh de brecha en Random Forest tras ajustarlo.</p></div>
+    </div>
+  </section>
+
+  <!-- 23 · Bibliografía -->
+  <section class="slide light table-wrap" data-section="Bibliografía">
+    <h2 class="serif d2 enter">Bibliografía y webgrafía</h2>
+    <ul class="refs enter">
+      <li>Pedregosa, F. et al. (2011). Scikit-learn: Machine Learning in Python. <em>Journal of Machine Learning Research</em>, 12, 2825–2830.</li>
+      <li>Breiman, L. (2001). Random Forests. <em>Machine Learning</em>, 45(1), 5–32.</li>
+      <li>Friedman, J. H. (2001). Greedy function approximation: a gradient boosting machine. <em>The Annals of Statistics</em>, 29(5), 1189–1232.</li>
+      <li>scikit-learn. <em>User Guide: Supervised learning</em>. <a href="https://scikit-learn.org/stable/supervised_learning.html">scikit-learn.org/stable/supervised_learning.html</a></li>
+      <li>scikit-learn. <em>Common pitfalls and recommended practices</em> (data leakage). <a href="https://scikit-learn.org/stable/common_pitfalls.html">scikit-learn.org/stable/common_pitfalls.html</a></li>
+      <li>scikit-learn. <em>Cross-validation: evaluating estimator performance</em>. <a href="https://scikit-learn.org/stable/modules/cross_validation.html">scikit-learn.org/stable/modules/cross_validation.html</a></li>
+      <li>pandas. <em>User Guide</em>. <a href="https://pandas.pydata.org/docs/user_guide/">pandas.pydata.org/docs/user_guide</a></li>
+      <li>Google. <em>Google Colaboratory</em>. <a href="https://colab.research.google.com">colab.research.google.com</a></li>
+      <li>Enunciado de la práctica: <em>Desarrollo, entrenamiento y evaluación de modelos de Machine Learning para la predicción del consumo eléctrico de viviendas</em>. Sistemas de Aprendizaje Automático.</li>
+    </ul>
+  </section>
+
+  <!-- 24 · Anexo -->
+  <section class="slide step" data-section="Anexo">
+    <div class="text enter">
+      <p class="matrix num">A1<small>/anexo</small></p>
+      <h2 class="serif d3">Archivos entregados</h2>
+      <ul class="points">
+        <li><code>consumo_electrico.ipynb</code>: cuaderno ejecutable con las 8 partes, comentado.</li>
+        <li><code>dataset_consumo_electrico_30000.csv</code>: datos de entrada.</li>
+        <li><code>presentacion.html</code>: esta memoria. Se exporta a PDF con <strong>Imprimir → Guardar como PDF</strong>.</li>
+      </ul>
+    </div>
+<pre class="enter"><span class="c"># Reproducir en Google Colab</span>
+1. Archivo → Subir cuaderno → consumo_electrico.ipynb
+2. Entorno de ejecución → Ejecutar todas
+3. Subir dataset_consumo_electrico_30000.csv
+   cuando lo pida la celda 1.1
+
+<span class="c"># Reproducir en local</span>
+python3 -m venv .venv
+source .venv/bin/activate
+pip install pandas numpy matplotlib seaborn \
+            scikit-learn jupyter
+jupyter lab</pre>
+  </section>
+
+</main>
+
+<nav class="progress" aria-label="Navegación de diapositivas">
+  <div class="dots" id="dots"></div>
+  <div class="nav-btns">
+    <button id="prev" aria-label="Diapositiva anterior"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3 5 8l5 5"/></svg></button>
+    <button id="next" aria-label="Diapositiva siguiente"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m6 3 5 5-5 5"/></svg></button>
+  </div>
+</nav>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  const dots = document.getElementById('dots');
+  const progress = document.querySelector('.progress');
+  const counter = document.getElementById('counter');
+  const section = document.getElementById('section');
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const pad = (n) => String(n).padStart(2, '0');
+  let current = 0;
+
+  slides.forEach((s, i) => {
+    s.dataset.page = `${pad(i + 1)} / ${pad(slides.length)}`;
+    const b = document.createElement('button');
+    b.setAttribute('aria-label', `Ir a la diapositiva ${i + 1}: ${s.dataset.section}`);
+    b.onclick = () => show(i);
+    dots.appendChild(b);
+  });
+
+  // Screenshots not yet added show a dashed placeholder with the expected file name.
+  document.querySelectorAll('.frame img').forEach((img) => {
+    const frame = img.parentElement;
+    frame.dataset.src = img.getAttribute('src');
+    const mark = () => frame.classList.add('missing');
+    if (img.complete && img.naturalWidth === 0) mark();
+    img.addEventListener('error', mark);
+  });
+
+  // Dot-matrix numbers resolve from random glyphs, like an LED display booting.
+  const scramble = (el) => {
+    if (reduceMotion) return;
+    const nodes = [...el.childNodes].filter((n) => n.nodeType === 3 && n.textContent.trim());
+    nodes.forEach((node) => {
+      const target = node.textContent;
+      const glyphs = '0123456789#%*+';
+      let frame = 0;
+      const tick = () => {
+        frame++;
+        node.textContent = [...target].map((ch, i) =>
+          frame > 4 + i * 3 || '.,/°%-→'.includes(ch) ? ch : glyphs[Math.floor(Math.random() * glyphs.length)]
+        ).join('');
+        if (frame <= 4 + target.length * 3) requestAnimationFrame(tick);
+      };
+      tick();
+    });
+  };
+
+  function show(i) {
+    current = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach((s, k) => s.classList.toggle('active', k === current));
+    [...dots.children].forEach((d, k) => d.setAttribute('aria-current', k === current));
+    const slide = slides[current];
+    counter.textContent = `${pad(current + 1)} / ${pad(slides.length)}`;
+    section.textContent = slide.dataset.section;
+    progress.style.setProperty('--chrome-fg', slide.classList.contains('light') ? '#595a5a' : '#b1b3b3');
+    slide.querySelectorAll('[data-scramble]').forEach(scramble);
+    if (location.hash !== `#${current + 1}`) history.replaceState(null, '', `#${current + 1}`);
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); show(current + 1); }
+    if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); show(current - 1); }
+    if (e.key === 'Home') show(0);
+    if (e.key === 'End') show(slides.length - 1);
+  });
+  document.getElementById('prev').onclick = () => show(current - 1);
+  document.getElementById('next').onclick = () => show(current + 1);
+  const fromHash = () => show((parseInt(location.hash.slice(1), 10) || 1) - 1);
+  window.addEventListener('hashchange', fromHash);
+  fromHash();
+</script>
+</body>
+</html>
