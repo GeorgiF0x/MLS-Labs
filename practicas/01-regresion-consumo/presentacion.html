@@ -251,7 +251,7 @@
       <div><span class="label">Práctica</span><b>Desarrollo, entrenamiento y evaluación de modelos de regresión</b></div>
       <div><span class="label">Módulo</span><b>Sistemas de Aprendizaje Automático</b></div>
       <div><span class="label">Alumno</span><b>Georgi Aleksandrov</b></div>
-      <div><span class="label">Entorno</span><b>Python · scikit-learn · Google Colab</b></div>
+      <div><span class="label">Entorno</span><b>Python · scikit-learn · JupyterLab · Google Colab</b></div>
     </div>
   </section>
 
@@ -306,9 +306,9 @@
       <h2 class="serif d3">El cuaderno, ejecutado en <em>Google Colab</em></h2>
       <ul class="points">
         <li>Desarrollo en local con un entorno virtual ligero (<code>.venv</code>, ~600 MB) y JupyterLab.</li>
-        <li>Ejecución final en <strong>Google Colab</strong>: el mismo cuaderno, sin cambios.</li>
+        <li>El mismo cuaderno, sin cambios, se ejecuta completo en <strong>Google Colab</strong> (24/11/2026, Python 3.13, pandas 2.2).</li>
         <li>La primera celda imprime <strong>fecha, hora (Europe/Madrid) y entorno</strong>: Colab trabaja en UTC.</li>
-        <li><code>random_state=42</code> en división y modelos: resultados reproducibles.</li>
+        <li>Las capturas de resultados de las páginas siguientes son de la ejecución local en <strong>JupyterLab</strong> (24/11/2026, Python 3.15, pandas 3.1), con <code>random_state=42</code> en división y modelos.</li>
       </ul>
     </div>
     <figure class="enter">
@@ -572,8 +572,8 @@ pipe.fit(X_train[SET_AMPLIO], y_train)</pre>
       </ul>
     </div>
     <figure class="enter">
-      <div class="frame"><img src="img/07-mae.png" alt="Tabla y gráfico de MAE en Google Colab"></div>
-      <figcaption class="label"><span>Parte 6</span><span>MAE train · test · tiempo</span></figcaption>
+      <div class="frame"><img src="img/07-mae.png" alt="Tabla y gráfico de MAE en JupyterLab"></div>
+      <figcaption class="label"><span>Parte 6</span><span>MAE por modelo y conjunto · gráfico</span></figcaption>
     </figure>
   </section>
 
@@ -593,7 +593,7 @@ pipe.fit(X_train[SET_AMPLIO], y_train)</pre>
       </table>
     </div>
     <figure class="enter">
-      <div class="frame"><img src="img/08-rf-ajuste.png" alt="GridSearchCV de Random Forest en Google Colab"></div>
+      <div class="frame"><img src="img/08-rf-ajuste.png" alt="GridSearchCV de Random Forest en JupyterLab"></div>
       <figcaption class="label"><span>Parte 7</span><span>GridSearchCV · 15 combinaciones · cv=5</span></figcaption>
     </figure>
   </section>
@@ -618,7 +618,7 @@ pipe.fit(X_train[SET_AMPLIO], y_train)</pre>
       </ul>
     </div>
     <figure class="enter">
-      <div class="frame"><img src="img/09-cv-importancia.png" alt="Validación cruzada e importancia de variables en Google Colab"></div>
+      <div class="frame"><img src="img/09-cv-importancia.png" alt="Validación cruzada e importancia de variables en JupyterLab"></div>
       <figcaption class="label"><span>Parte 8</span><span>cross_val_score · feature_importances_</span></figcaption>
     </figure>
   </section>

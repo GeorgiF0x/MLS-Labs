@@ -8,15 +8,17 @@ Prácticas y laboratorios del módulo **Sistemas de Aprendizaje Automático** (c
 |---|---|---|
 | 01 | [Regresión: consumo eléctrico de viviendas](practicas/01-regresion-consumo) | Predicción de `consumo_mensual_kwh` con 4 modelos de scikit-learn y evaluación por MAE |
 
-Cada práctica tiene su carpeta con el enunciado, los datos, el notebook y la presentación (memoria):
+Cada práctica tiene su carpeta con el enunciado, los datos, el notebook, la memoria y la presentación:
 
 ```text
 practicas/NN-nombre/
 ├── enunciado.pdf
 ├── dataset.csv
 ├── notebook.ipynb
-├── presentacion.html   # memoria; se exporta a PDF con Imprimir → Guardar como PDF
-└── img/                # capturas de Google Colab
+├── memoria.pdf         # documento técnico de entrega
+├── memoria.html        # fuente de memoria.pdf
+├── presentacion.html   # presentación de apoyo
+└── img/                # capturas de Google Colab y JupyterLab
 ```
 
 ## Ejecución

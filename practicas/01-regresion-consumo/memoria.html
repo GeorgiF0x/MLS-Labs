@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Predicción del consumo eléctrico de viviendas · Memoria técnica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Doto:wght@800&family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  /* ---------- tokens ---------- */
+  :root {
+    --ink: #0a0a0a;
+    --ink-2: #3a3a3a;
+    --grey: #6b6b6b;
+    --rule: #d8d9d9;
+    --paper-2: #f4f4f4;
+    --red: #d71921;
+    --black: #040404;
+
+    --dot: "Doto", "Geist Mono", monospace;
+    --serif: "Instrument Serif", Georgia, serif;
+    --sans: "Geist", "Helvetica Neue", Arial, sans-serif;
+    --mono: "Geist Mono", ui-monospace, Menlo, monospace;
+
+    --rail: 36mm;   /* left rail for numbers and labels */
+    --gap: 8mm;
+  }
+
+  /* ---------- page ---------- */
+  @page {
+    size: A4;
+    margin: 22mm 18mm 20mm 18mm;
+    @top-left { content: "Predicción del consumo eléctrico de viviendas"; font: 400 7pt var(--mono); color: var(--grey); text-transform: uppercase; letter-spacing: .06em; vertical-align: bottom; padding-bottom: 5mm; }
+    @top-right { content: "Sistemas de Aprendizaje Automático"; font: 400 7pt var(--mono); color: var(--grey); text-transform: uppercase; letter-spacing: .06em; vertical-align: bottom; padding-bottom: 5mm; }
+    @bottom-right { content: counter(page, decimal-leading-zero) " / " counter(pages, decimal-leading-zero); font: 500 7.5pt var(--mono); color: var(--ink); vertical-align: top; padding-top: 5mm; }
+    @bottom-left { content: "MLS · Práctica 01 · Regresión"; font: 400 7pt var(--mono); color: var(--grey); text-transform: uppercase; letter-spacing: .06em; vertical-align: top; padding-top: 5mm; }
+  }
+  @page :first {
+    margin: 0;
+    @top-left { content: none; } @top-right { content: none; }
+    @bottom-left { content: none; } @bottom-right { content: none; }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; color: var(--ink); background: #fff;
+    font: 400 10pt/1.5 var(--sans);
+    font-synthesis: none; -webkit-font-smoothing: antialiased;
+    hyphens: auto; -webkit-hyphens: auto;
+  }
+
+  /* ---------- cover ---------- */
+  .cover {
+    width: 210mm; height: 297mm; break-after: page;
+    background-color: var(--black); color: #fff;
+    background-image: radial-gradient(circle, rgba(255,255,255,.16) .5px, transparent .8px);
+    background-size: 5mm 5mm; background-position: 2.5mm 2.5mm;
+    padding: 24mm 20mm 22mm;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .cover .top { display: flex; justify-content: space-between; font: 500 7.5pt var(--mono); letter-spacing: .08em; text-transform: uppercase; color: #b1b3b3; }
+  .cover .mark { font: 800 112pt/.85 var(--dot); letter-spacing: -.01em; margin: 0; }
+  .cover .mark i { display: inline-block; width: 11pt; height: 11pt; background: var(--red); margin: 0 4pt; vertical-align: baseline; }
+  .cover h1 { font: 400 40pt/1.02 var(--serif); margin: 10mm 0 0; max-width: 150mm; letter-spacing: -.01em; }
+  .cover h1 em { font-style: italic; }
+  .cover .sub { font: 400 11pt/1.5 var(--sans); color: #b1b3b3; margin: 6mm 0 0; max-width: 130mm; }
+  .cover .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm 8mm; border-top: .5pt solid #3a3a3a; padding-top: 6mm; }
+  .cover .meta div { display: grid; gap: 1.5mm; }
+  .cover .meta span { font: 500 6.5pt var(--mono); letter-spacing: .08em; text-transform: uppercase; color: #8a8c8c; }
+  .cover .meta b { font: 500 9pt/1.35 var(--mono); color: #fff; }
+
+  /* ---------- type ---------- */
+  .label, figcaption, caption {
+    font: 500 7pt/1.4 var(--mono); letter-spacing: .07em; text-transform: uppercase; color: var(--grey);
+  }
+  p { margin: 0 0 3mm; orphans: 3; widows: 3; text-wrap: pretty; }
+  strong { font-weight: 600; }
+  em { font-style: italic; }
+  code { font: 400 8.6pt var(--mono); background: var(--paper-2); padding: .2mm 1mm; border-radius: 1mm; white-space: nowrap; }
+
+  .flow > p, .flow > ul, .flow > ol, .flow > h2, .flow > h3, .flow > .lead { margin-left: calc(var(--rail) + var(--gap)); }
+  .flow > ol.toc, .flow > h2.toc-title { margin-left: 0; }
+
+  /* chapter heading */
+  h1.ch {
+    display: grid; grid-template-columns: var(--rail) 1fr; column-gap: var(--gap); align-items: end;
+    margin: 12mm 0 6mm; padding-top: 4mm; border-top: 1pt solid var(--ink);
+    break-after: avoid; break-inside: avoid;
+  }
+  h1.ch:first-child { margin-top: 0; }
+  h1.ch .n { font: 800 34pt/.8 var(--dot); color: var(--ink); }
+  h1.ch .n i { display: inline-block; width: 4pt; height: 4pt; background: var(--red); margin-left: 2pt; vertical-align: baseline; }
+  h1.ch .t { font: 400 25pt/1.05 var(--serif); letter-spacing: -.005em; }
+  .break { break-before: page; }
+
+  h2 {
+    position: relative; font: 600 11.5pt/1.3 var(--sans); margin-top: 7mm; margin-bottom: 2.5mm;
+    break-after: avoid;
+  }
+  h2 .n {
+    position: absolute; left: calc(-1 * (var(--rail) + var(--gap))); top: .35em;
+    font: 500 7.5pt var(--mono); letter-spacing: .06em; color: var(--grey);
+  }
+  h3 { font: 600 10pt/1.3 var(--sans); margin: 5mm 0 2mm; break-after: avoid; }
+
+  ul, ol { margin-top: 0; margin-bottom: 3mm; padding-left: 5mm; }
+  li { margin-bottom: 1.6mm; padding-left: 1mm; }
+  ul li::marker { content: "■  "; color: var(--red); font-size: 6pt; }
+  ol li::marker { font: 500 8pt var(--mono); color: var(--grey); }
+
+  .lead { font: 400 14pt/1.35 var(--serif); color: var(--ink); margin-bottom: 5mm; }
+  .note { color: var(--ink-2); font-size: 9pt; }
+
+  /* ---------- tables ---------- */
+  .tbl { margin: 4mm 0 5mm; break-inside: avoid; }
+  table { width: 100%; border-collapse: collapse; font-size: 8.8pt; line-height: 1.35; font-variant-numeric: lining-nums tabular-nums; }
+  caption { caption-side: top; text-align: left; padding-bottom: 2.2mm; color: var(--ink); }
+  caption b { color: var(--red); font-weight: 500; margin-right: 2mm; }
+  thead { display: table-header-group; }
+  th { font: 500 6.8pt var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--grey); text-align: left; padding: 0 3mm 1.8mm 0; border-bottom: 1pt solid var(--ink); vertical-align: bottom; }
+  td { padding: 1.8mm 3mm 1.8mm 0; border-bottom: .5pt solid var(--rule); vertical-align: top; }
+  tr { break-inside: avoid; }
+  td.n, th.n { text-align: right; padding-left: 3mm; padding-right: 5mm; white-space: nowrap; }
+  td.n:last-child, th.n:last-child { padding-right: 0; }
+  /* no hyphenation in identifiers, code, headings or the cover */
+  code, pre, .cover, h1, h2, h3, .lead, caption, figcaption, .toc, th { hyphens: manual; -webkit-hyphens: manual; }
+  td.n { font-family: var(--mono); font-size: 8.4pt; }
+  td.best { color: var(--red); font-weight: 500; }
+  td.best::before { content: "● "; font-size: 6pt; vertical-align: 1pt; }
+  td code { white-space: normal; }
+  .tnote { font-size: 7.8pt; color: var(--grey); margin: 1.8mm 0 0; }
+
+  /* ---------- figures ---------- */
+  figure { margin: 4mm 0 6mm; break-inside: avoid; }
+  figure img { display: block; width: 100%; height: auto; border: .5pt solid var(--rule); border-radius: 1.2mm; }
+  figure.narrow img { width: 82%; margin: 0 auto; }
+  figure.short img { max-height: 92mm; width: auto; max-width: 100%; margin: 0 auto; }
+  figcaption { margin-top: 2.2mm; color: var(--ink); }
+  figcaption b { color: var(--red); font-weight: 500; margin-right: 2mm; }
+  figcaption span { color: var(--grey); }
+
+  /* ---------- index ---------- */
+  .toc-title { font: 400 25pt/1 var(--serif); margin: 0 0 6mm; padding-top: 4mm; border-top: 1pt solid var(--ink); }
+  .toc { list-style: none; margin: 0 0 9mm; padding: 0; }
+  .toc li { margin: 0; padding: 0; }
+  .toc li::marker { content: none; }
+  .toc a { display: flex; align-items: baseline; gap: 2mm; color: var(--ink); text-decoration: none; padding: 1.1mm 0; }
+  .toc a .i { font: 500 7.5pt var(--mono); color: var(--grey); width: 10mm; flex: none; }
+  .toc a .fill { flex: 1; border-bottom: .5pt dotted #b1b3b3; transform: translateY(-1mm); }
+  .toc a .pg { font: 500 8pt var(--mono); flex: none; }
+  .toc .l1 a { font-weight: 600; padding-top: 2.4mm; }
+  .toc .l2 a { padding-left: 10mm; font-size: 9.2pt; color: var(--ink-2); }
+  .toc .l2 a .i { width: 9mm; }
+  .toc.small a { font-size: 9pt; }
+  .toc-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 10mm; }
+
+  /* ---------- code ---------- */
+  pre {
+    font: 400 8pt/1.55 var(--mono); background: var(--paper-2); border-radius: 1.2mm;
+    padding: 3.5mm 4mm; margin: 2mm 0 4mm calc(var(--rail) + var(--gap)); white-space: pre-wrap; break-inside: avoid;
+  }
+  pre .c { color: var(--grey); }
+  pre .k { color: var(--red); }
+
+  /* ---------- references ---------- */
+  .refs { list-style: none; padding: 0; }
+  .refs li { padding-left: 8mm; text-indent: -8mm; margin-bottom: 2.4mm; font-size: 9.2pt; }
+  .refs li::marker { content: none; }
+  .refs a { color: var(--ink); text-decoration: none; word-break: break-all; }
+
+  @media screen {
+    body { background: #e9e9e9; }
+    .sheet { width: 210mm; margin: 10mm auto; background: #fff; padding: 22mm 18mm; }
+  }
+.keep li { break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<!-- ================= COVER ================= -->
+<section class="cover">
+  <div class="top"><span>Sistemas de Aprendizaje Automático</span><span>Práctica 01 · Regresión</span></div>
+  <div>
+    <p class="mark">KWH<i></i>ML</p>
+    <h1>Predicción del consumo eléctrico de viviendas <em>con modelos de regresión</em></h1>
+    <p class="sub">Memoria técnica: desarrollo, entrenamiento y evaluación de cuatro modelos de Machine Learning sobre 30.000 viviendas.</p>
+  </div>
+  <div class="meta">
+    <div><span>Alumno</span><b>Georgi Aleksandrov</b></div>
+    <div><span>Curso</span><b>Inteligencia Artificial y Big Data</b></div>
+    <div><span>Fecha</span><b>Noviembre de 2026</b></div>
+    <div><span>Variable objetivo</span><b>consumo_mensual_kwh</b></div>
+    <div><span>Herramientas</span><b>Python · scikit-learn · Colab</b></div>
+    <div><span>Repositorio</span><b>github.com/GeorgiF0x/MLS-Labs</b></div>
+  </div>
+</section>
+
+<main class="flow">
+
+<!-- ================= INDEXES ================= -->
+<h2 class="toc-title" style="margin-left:0">Índice</h2>
+<ol class="toc" id="toc-main">
+  <li class="l1"><a href="#c1"><span class="i">01</span>Introducción<span class="fill"></span><span class="pg" data-target="c1">04</span></a></li>
+  <li class="l2"><a href="#c1-1"><span class="i">1.1</span>Objetivo<span class="fill"></span><span class="pg" data-target="c1-1">04</span></a></li>
+  <li class="l2"><a href="#c1-2"><span class="i">1.2</span>Metodología<span class="fill"></span><span class="pg" data-target="c1-2">04</span></a></li>
+  <li class="l1"><a href="#c2"><span class="i">02</span>Entorno de trabajo<span class="fill"></span><span class="pg" data-target="c2">05</span></a></li>
+  <li class="l1"><a href="#c3"><span class="i">03</span>Inspección del conjunto de datos<span class="fill"></span><span class="pg" data-target="c3">06</span></a></li>
+  <li class="l2"><a href="#c3-1"><span class="i">3.1</span>Estructura<span class="fill"></span><span class="pg" data-target="c3-1">06</span></a></li>
+  <li class="l2"><a href="#c3-2"><span class="i">3.2</span>Valores ausentes y duplicados<span class="fill"></span><span class="pg" data-target="c3-2">06</span></a></li>
+  <li class="l2"><a href="#c3-3"><span class="i">3.3</span>Rangos y coherencia<span class="fill"></span><span class="pg" data-target="c3-3">07</span></a></li>
+  <li class="l2"><a href="#c3-4"><span class="i">3.4</span>El mes no lleva información climática<span class="fill"></span><span class="pg" data-target="c3-4">07</span></a></li>
+  <li class="l2"><a href="#c3-5"><span class="i">3.5</span>Variable objetivo<span class="fill"></span><span class="pg" data-target="c3-5">07</span></a></li>
+  <li class="l1"><a href="#c4"><span class="i">04</span>Cribado de datos<span class="fill"></span><span class="pg" data-target="c4">08</span></a></li>
+  <li class="l1"><a href="#c5"><span class="i">05</span>Selección de variables<span class="fill"></span><span class="pg" data-target="c5">09</span></a></li>
+  <li class="l2"><a href="#c5-1"><span class="i">5.1</span>Criterios<span class="fill"></span><span class="pg" data-target="c5-1">09</span></a></li>
+  <li class="l2"><a href="#c5-2"><span class="i">5.2</span>Conjuntos elegidos<span class="fill"></span><span class="pg" data-target="c5-2">09</span></a></li>
+  <li class="l2"><a href="#c5-3"><span class="i">5.3</span>Verificación con los datos<span class="fill"></span><span class="pg" data-target="c5-3">09</span></a></li>
+  <li class="l2"><a href="#c5-4"><span class="i">5.4</span>Variables descartadas<span class="fill"></span><span class="pg" data-target="c5-4">11</span></a></li>
+  <li class="l1"><a href="#c6"><span class="i">06</span>Preparación de los datos<span class="fill"></span><span class="pg" data-target="c6">11</span></a></li>
+  <li class="l2"><a href="#c6-1"><span class="i">6.1</span>División en entrenamiento y test<span class="fill"></span><span class="pg" data-target="c6-1">11</span></a></li>
+  <li class="l2"><a href="#c6-2"><span class="i">6.2</span>Codificación de las categóricas<span class="fill"></span><span class="pg" data-target="c6-2">11</span></a></li>
+  <li class="l2"><a href="#c6-3"><span class="i">6.3</span>Escalado y pipeline<span class="fill"></span><span class="pg" data-target="c6-3">12</span></a></li>
+  <li class="l1"><a href="#c7"><span class="i">07</span>Modelos y métrica<span class="fill"></span><span class="pg" data-target="c7">12</span></a></li>
+  <li class="l2"><a href="#c7-1"><span class="i">7.1</span>Elección de los modelos<span class="fill"></span><span class="pg" data-target="c7-1">12</span></a></li>
+  <li class="l2"><a href="#c7-2"><span class="i">7.2</span>Métrica: MAE<span class="fill"></span><span class="pg" data-target="c7-2">13</span></a></li>
+  <li class="l1"><a href="#c8"><span class="i">08</span>Resultados<span class="fill"></span><span class="pg" data-target="c8">13</span></a></li>
+  <li class="l2"><a href="#c8-1"><span class="i">8.1</span>MAE por modelo y conjunto<span class="fill"></span><span class="pg" data-target="c8-1">13</span></a></li>
+  <li class="l2"><a href="#c8-2"><span class="i">8.2</span>Sobreajuste<span class="fill"></span><span class="pg" data-target="c8-2">14</span></a></li>
+  <li class="l2"><a href="#c8-3"><span class="i">8.3</span>Corrección de Random Forest<span class="fill"></span><span class="pg" data-target="c8-3">15</span></a></li>
+  <li class="l2"><a href="#c8-4"><span class="i">8.4</span>Validación cruzada e importancia<span class="fill"></span><span class="pg" data-target="c8-4">16</span></a></li>
+  <li class="l1"><a href="#c9"><span class="i">09</span>Respuestas a las preguntas del enunciado<span class="fill"></span><span class="pg" data-target="c9">17</span></a></li>
+  <li class="l1"><a href="#c10"><span class="i">10</span>Conclusiones<span class="fill"></span><span class="pg" data-target="c10">18</span></a></li>
+  <li class="l1"><a href="#c11"><span class="i">11</span>Bibliografía y webgrafía<span class="fill"></span><span class="pg" data-target="c11">19</span></a></li>
+  <li class="l1"><a href="#ca"><span class="i">A</span>Anexo A. Archivos y reproducción<span class="fill"></span><span class="pg" data-target="ca">20</span></a></li>
+  <li class="l1"><a href="#cb"><span class="i">B</span>Anexo B. Código principal<span class="fill"></span><span class="pg" data-target="cb">20</span></a></li>
+</ol>
+
+<div class="toc-grid">
+  <div>
+    <h2 class="toc-title" style="margin-left:0;font-size:16pt">Índice de tablas</h2>
+    <ol class="toc small">
+      <li><a href="#t1"><span class="i">T01</span>Herramientas y versiones<span class="fill"></span><span class="pg" data-target="t1">05</span></a></li>
+      <li><a href="#t2"><span class="i">T02</span>Valores ausentes por columna<span class="fill"></span><span class="pg" data-target="t2">06</span></a></li>
+      <li><a href="#t3"><span class="i">T03</span>Filas con nulos frente a completas<span class="fill"></span><span class="pg" data-target="t3">08</span></a></li>
+      <li><a href="#t4"><span class="i">T04</span>Variables seleccionadas<span class="fill"></span><span class="pg" data-target="t4">09</span></a></li>
+      <li><a href="#t5"><span class="i">T05</span>Variables descartadas<span class="fill"></span><span class="pg" data-target="t5">11</span></a></li>
+      <li><a href="#t6"><span class="i">T06</span>Transformación por tipo<span class="fill"></span><span class="pg" data-target="t6">12</span></a></li>
+      <li><a href="#t7"><span class="i">T07</span>Modelos entrenados<span class="fill"></span><span class="pg" data-target="t7">13</span></a></li>
+      <li><a href="#t8"><span class="i">T08</span>MAE en test<span class="fill"></span><span class="pg" data-target="t8">13</span></a></li>
+      <li><a href="#t9"><span class="i">T09</span>MAE en entrenamiento y test<span class="fill"></span><span class="pg" data-target="t9">15</span></a></li>
+      <li><a href="#t10"><span class="i">T10</span>Random Forest ajustado<span class="fill"></span><span class="pg" data-target="t10">15</span></a></li>
+      <li><a href="#t11"><span class="i">T11</span>Validación cruzada<span class="fill"></span><span class="pg" data-target="t11">16</span></a></li>
+      <li><a href="#t12"><span class="i">T12</span>Comparativa para producción<span class="fill"></span><span class="pg" data-target="t12">18</span></a></li>
+      <li><a href="#t13"><span class="i">T13</span>Archivos entregados<span class="fill"></span><span class="pg" data-target="t13">20</span></a></li>
+    </ol>
+  </div>
+  <div>
+    <h2 class="toc-title" style="margin-left:0;font-size:16pt">Índice de figuras</h2>
+    <ol class="toc small">
+      <li><a href="#f1"><span class="i">F01</span>Ejecución en Google Colab<span class="fill"></span><span class="pg" data-target="f1">05</span></a></li>
+      <li><a href="#f2"><span class="i">F02</span>Nulos y duplicados<span class="fill"></span><span class="pg" data-target="f2">07</span></a></li>
+      <li><a href="#f3"><span class="i">F03</span>Temperatura media por mes<span class="fill"></span><span class="pg" data-target="f3">07</span></a></li>
+      <li><a href="#f4"><span class="i">F04</span>Distribución del consumo<span class="fill"></span><span class="pg" data-target="f4">08</span></a></li>
+      <li><a href="#f5"><span class="i">F05</span>Correlaciones numéricas<span class="fill"></span><span class="pg" data-target="f5">10</span></a></li>
+      <li><a href="#f6"><span class="i">F06</span>Consumo por categoría<span class="fill"></span><span class="pg" data-target="f6">10</span></a></li>
+      <li><a href="#f7"><span class="i">F07</span>MAE por modelo y conjunto<span class="fill"></span><span class="pg" data-target="f7">14</span></a></li>
+      <li><a href="#f8"><span class="i">F08</span>Ajuste de Random Forest<span class="fill"></span><span class="pg" data-target="f8">16</span></a></li>
+      <li><a href="#f9"><span class="i">F09</span>Validación cruzada e importancia<span class="fill"></span><span class="pg" data-target="f9">17</span></a></li>
+    </ol>
+  </div>
+</div>
+
+<!-- ================= 1 ================= -->
+<h1 class="ch break" id="c1"><span class="n">01<i></i></span><span class="t">Introducción</span></h1>
+<p class="lead">Estimar cuántos kilovatios hora consume una vivienda al mes a partir de sus características, y explicar por qué un modelo lo hace mejor que otro.</p>
+
+<h2 id="c1-1"><span class="n">1.1</span>Objetivo</h2>
+<p>La variable a predecir, <code>consumo_mensual_kwh</code>, es numérica y continua, y el conjunto de datos incluye su valor real para cada vivienda. Es, por tanto, un problema de <strong>regresión supervisada</strong>: los modelos aprenden comparando sus predicciones con el consumo real.</p>
+<p>Se entrenan <strong>cuatro algoritmos</strong> con <strong>dos conjuntos de variables</strong> (uno reducido de 5 y otro amplio de 8) y se comparan mediante el <strong>error absoluto medio (MAE)</strong> sobre viviendas que los modelos no han visto durante el entrenamiento.</p>
+
+<h2 id="c1-2"><span class="n">1.2</span>Metodología</h2>
+<p>Cada paso se apoya en las conclusiones del anterior:</p>
+<ol>
+  <li><strong>Inspección</strong>: conocer tipos, valores ausentes, duplicados y rangos antes de entrenar.</li>
+  <li><strong>Cribado</strong>: decidir qué hacer con los datos incompletos.</li>
+  <li><strong>Selección de variables</strong>: proponerlas con criterios lógicos y comprobarlas con los datos.</li>
+  <li><strong>Preparación</strong>: dividir en entrenamiento y test, codificar y escalar sin filtrar información del test.</li>
+  <li><strong>Entrenamiento</strong> de cuatro modelos de familias diferentes con los dos conjuntos.</li>
+  <li><strong>Evaluación</strong>: MAE en test, sobreajuste, ajuste de hiperparámetros y validación cruzada.</li>
+</ol>
+<p>Un principio guía todo el proceso: <strong>la lógica propone y los datos verifican</strong>. Cada decisión se justifica con un razonamiento sobre el problema y después se contrasta con una medida obtenida del propio dataset.</p>
+
+<!-- ================= 2 ================= -->
+<h1 class="ch" id="c2"><span class="n">02<i></i></span><span class="t">Entorno de trabajo</span></h1>
+<p>El cuaderno se desarrolló en local con <strong>JupyterLab</strong> dentro de un entorno virtual de Python. Se eligió un entorno virtual en lugar de Docker porque instala solo las librerías necesarias (unos 600 MB frente a los más de 5 GB de una imagen científica completa) y se elimina borrando una carpeta.</p>
+<p>El mismo cuaderno, sin modificaciones, se ejecutó completo en <strong>Google Colab</strong> (Figura 01). Su primera celda imprime la fecha y la hora en la zona horaria de Madrid y el entorno de ejecución, porque los servidores de Colab trabajan en UTC.</p>
+
+<div class="tbl" id="t1">
+<table>
+  <caption><b>Tabla 01</b>Herramientas utilizadas y versiones</caption>
+  <thead><tr><th>Herramienta</th><th>Uso en la práctica</th><th>Local</th><th>Colab</th></tr></thead>
+  <tbody>
+    <tr><td>Python</td><td>Lenguaje</td><td>3.15.2</td><td>3.13.18</td></tr>
+    <tr><td>pandas</td><td>Carga, limpieza y análisis de datos</td><td>3.1.1</td><td>2.2.3</td></tr>
+    <tr><td>NumPy</td><td>Cálculo numérico</td><td>2.5.4</td><td>Preinstalada</td></tr>
+    <tr><td>scikit-learn</td><td>Preprocesado, modelos y métricas</td><td>1.9.1</td><td>Preinstalada</td></tr>
+    <tr><td>matplotlib · seaborn</td><td>Gráficos</td><td>3.11.2 · 0.13.2</td><td>Preinstaladas</td></tr>
+    <tr><td>JupyterLab</td><td>Desarrollo del cuaderno</td><td>4.6.6</td><td>Interfaz de Colab</td></tr>
+  </tbody>
+</table>
+</div>
+
+<figure id="f1">
+  <img src="img/01-colab-entorno.png" alt="Cuaderno ejecutado en Google Colab con el reloj del sistema y la celda de fecha, hora y entorno">
+  <figcaption><b>Figura 01</b>Ejecución en Google Colab · <span>reloj del sistema y celda de fecha y hora · 24/11/2026 21:15</span></figcaption>
+</figure>
+<p class="note"><strong>Origen de las capturas.</strong> La Figura 01 corresponde a la ejecución en Google Colab: la fecha y la hora aparecen tanto en el reloj del sistema (barra superior) como en la salida de la primera celda. Las capturas de resultados (Figuras 02 a 09) proceden de la ejecución local del mismo cuaderno en JupyterLab el 24/11/2026. Todas las divisiones de datos y modelos usan <code>random_state=42</code>, de modo que cada ejecución reproduce la misma partición y el mismo entrenamiento.</p>
+
+<!-- ================= 3 ================= -->
+<h1 class="ch" id="c3"><span class="n">03<i></i></span><span class="t">Inspección del conjunto de datos</span></h1>
+<p>Antes de entrenar hay que conocer los datos: un modelo aprende de lo que recibe, incluidos sus errores. Esta fase busca los problemas que el cribado tendrá que resolver.</p>
+
+<h2 id="c3-1"><span class="n">3.1</span>Estructura</h2>
+<p>El archivo contiene <strong>30.000 viviendas y 24 columnas</strong>: 12 variables numéricas, 10 categóricas, el identificador <code>id_registro</code> y la variable objetivo. Las categóricas son texto («Piso», «Gas»…) y scikit-learn solo trabaja con números, así que habrá que codificarlas (apartado 6.2).</p>
+
+<h2 id="c3-2"><span class="n">3.2</span>Valores ausentes y duplicados</h2>
+<p>Solo <strong>61 filas (0,2 %)</strong> tienen algún valor vacío, repartidas entre 11 columnas. No hay <strong>ninguna fila duplicada</strong>, ni siquiera ignorando el identificador.</p>
+
+<div class="tbl" id="t2">
+<table>
+  <caption><b>Tabla 02</b>Valores ausentes por columna</caption>
+  <thead><tr><th>Columna</th><th class="n">Nulos</th><th class="n">% del total</th><th>Columna</th><th class="n">Nulos</th><th class="n">% del total</th></tr></thead>
+  <tbody>
+    <tr><td><code>superficie_m2</code></td><td class="n">3</td><td class="n">0,010</td><td><code>temperatura_maxima_c</code></td><td class="n">1</td><td class="n">0,003</td></tr>
+    <tr><td><code>numero_personas</code></td><td class="n">12</td><td class="n">0,040</td><td><code>paneles_solares</code></td><td class="n">2</td><td class="n">0,007</td></tr>
+    <tr><td><code>habitaciones</code></td><td class="n">13</td><td class="n">0,043</td><td><code>numero_electrodomesticos</code></td><td class="n">4</td><td class="n">0,013</td></tr>
+    <tr><td><code>dias_facturacion</code></td><td class="n">20</td><td class="n">0,067</td><td><code>nivel_ocupacion_diurna</code></td><td class="n">1</td><td class="n">0,003</td></tr>
+    <tr><td><code>temperatura_media_c</code></td><td class="n">9</td><td class="n">0,030</td><td><code>potencia_contratada_kw</code></td><td class="n">2</td><td class="n">0,007</td></tr>
+    <tr><td><code>temperatura_minima_c</code></td><td class="n">11</td><td class="n">0,037</td><td></td><td></td><td></td></tr>
+  </tbody>
+</table>
+</div>
+
+<figure id="f2" class="narrow">
+  <img src="img/02-nulos.png" alt="Valores ausentes por columna y duplicados en JupyterLab">
+  <figcaption><b>Figura 02</b>Nulos y duplicados · <span>JupyterLab</span></figcaption>
+</figure>
+
+<h2 id="c3-3"><span class="n">3.3</span>Rangos y coherencia</h2>
+<p>No aparecen valores imposibles: la superficie va de 30 a 284 m², el número de personas de 1 a 8 y el consumo de 118 a 1.268 kWh. En las 30.000 filas se cumple <code>mínima ≤ media ≤ máxima</code> para la temperatura, y las categorías no tienen erratas (no conviven, por ejemplo, «Si» y «Sí»).</p>
+
+<h2 id="c3-4"><span class="n">3.4</span>El mes no lleva información climática</h2>
+<p>Si el mes reflejara el clima, la temperatura media cambiaría a lo largo del año. Sin embargo, ronda los <strong>16 °C en los doce meses</strong> (Figura 03) y en las cuatro zonas climáticas. El dataset es sintético, y eso tiene una consecuencia directa: <code>mes</code> y <code>zona_climatica</code> no aportan información sobre el clima. Si el clima influye en el consumo, lo hará a través de la temperatura.</p>
+
+<figure id="f3">
+  <img src="img/04-temperatura-mes.png" alt="Temperatura media por mes en JupyterLab">
+  <figcaption><b>Figura 03</b>Coherencia de las temperaturas y media por mes · <span>JupyterLab</span></figcaption>
+</figure>
+
+<h2 id="c3-5"><span class="n">3.5</span>Variable objetivo</h2>
+<p>El consumo tiene forma de campana, con una media de <strong>606 kWh</strong> (Figura 04). El diagrama de caja marca como atípicos algunos valores por debajo de 220 kWh y por encima de 1.000 kWh, pero son consumos plausibles para viviendas muy pequeñas o muy grandes, no errores de medida. <strong>Se conservan</strong>: eliminarlos haría que el modelo infravalorase sistemáticamente las viviendas de mayor consumo.</p>
+
+<figure id="f4">
+  <img src="img/03-distribucion.png" alt="Histograma y diagrama de caja del consumo mensual en JupyterLab">
+  <figcaption><b>Figura 04</b>Distribución y diagrama de caja de consumo_mensual_kwh · <span>JupyterLab</span></figcaption>
+</figure>
+
+<!-- ================= 4 ================= -->
+<h1 class="ch" id="c4"><span class="n">04<i></i></span><span class="t">Cribado de datos</span></h1>
+<p>Ante un valor vacío hay dos opciones: <strong>eliminar la fila</strong> o <strong>imputar</strong> el hueco (rellenarlo, por ejemplo, con la mediana). Eliminar filas solo introduce sesgo si las incompletas son distintas del resto: si solo faltara la superficie en las casas grandes, el modelo vería menos casas grandes de las que hay. Por eso, antes de decidir, se comparó el consumo de ambos grupos.</p>
+
+<div class="tbl" id="t3">
+<table>
+  <caption><b>Tabla 03</b>Consumo (kWh) de las filas con nulos frente a las completas</caption>
+  <thead><tr><th>Grupo</th><th class="n">Filas</th><th class="n">Media</th><th class="n">Mediana</th><th class="n">Desv. típica</th></tr></thead>
+  <tbody>
+    <tr><td>Filas con algún nulo</td><td class="n">61</td><td class="n">610,6</td><td class="n">599,3</td><td class="n">150,2</td></tr>
+    <tr><td>Filas completas</td><td class="n">29.939</td><td class="n">606,2</td><td class="n">597,9</td><td class="n">146,0</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p><strong>Decisión: eliminar las 61 filas.</strong></p>
+<ul>
+  <li><strong>Son el 0,2 % de los datos</strong>: perderlas no reduce de forma apreciable la información.</li>
+  <li><strong>Su consumo es prácticamente igual al del resto</strong> (Tabla 03): los nulos se comportan como aleatorios y eliminarlos no sesga el modelo.</li>
+  <li><strong>Imputar obliga a inventar valores</strong> y a calcular la mediana solo con el entrenamiento para no filtrar información del test (<em>data leakage</em>). Con tan pocas filas no compensa.</li>
+</ul>
+<p>Además se elimina <code>id_registro</code>, que solo identifica la fila y el enunciado prohíbe usar como predictor, y se conservan los valores atípicos del consumo (apartado 3.5). Resultado: <strong>29.939 filas y 23 columnas, sin valores ausentes</strong>.</p>
+
+<!-- ================= 5 ================= -->
+<h1 class="ch" id="c5"><span class="n">05<i></i></span><span class="t">Selección de variables</span></h1>
+
+<h2 id="c5-1"><span class="n">5.1</span>Criterios</h2>
+<p>Cada variable candidata pasó por tres preguntas:</p>
+<ol>
+  <li><strong>¿Cambia los kWh o solo el precio?</strong> El objetivo es energía, no dinero: la tarifa cambia lo que se paga, no lo que se consume.</li>
+  <li><strong>¿Es la causa directa o un indicador?</strong> Se prefiere la causa: el aislamiento antes que la edad de la vivienda, la temperatura antes que la zona climática.</li>
+  <li><strong>¿Repite información de otra variable?</strong> Una variable redundante ocupa un hueco sin aportar nada nuevo.</li>
+</ol>
+<p>Después se verificaron con dos medidas: la <strong>correlación de Pearson</strong> con el consumo para las numéricas (de −1 a 1; cuanto más lejos de 0, más relación lineal) y la <strong>diferencia de consumo medio entre categorías</strong> (Δ) para las categóricas.</p>
+
+<h2 id="c5-2"><span class="n">5.2</span>Conjuntos elegidos</h2>
+<p>El conjunto <strong>reducido</strong> reúne las cinco variables que describen cuánta actividad hay en la vivienda: personas, espacio, aparatos y presencia en casa. El <strong>amplio</strong> añade tres sobre cómo se obtiene la energía y cómo es el edificio.</p>
+
+<div class="tbl" id="t4">
+<table>
+  <caption><b>Tabla 04</b>Variables seleccionadas y relación esperada con el consumo</caption>
+  <thead><tr><th style="width:30%">Variable</th><th style="width:11%">Conjunto</th><th>Por qué afecta a los kWh</th><th class="n" style="width:12%">Dato</th></tr></thead>
+  <tbody>
+    <tr><td><code>numero_personas</code></td><td>Reducido</td><td>Más duchas, lavadoras, cocina e iluminación.</td><td class="n">r = 0,56</td></tr>
+    <tr><td><code>superficie_m2</code></td><td>Reducido</td><td>Más metros que iluminar y climatizar.</td><td class="n">r = 0,42</td></tr>
+    <tr><td><code>numero_electrodomesticos</code></td><td>Reducido</td><td>Más aparatos conectados consumiendo.</td><td class="n">r = 0,28</td></tr>
+    <tr><td><code>teletrabajo</code></td><td>Reducido</td><td>Más horas en casa con equipos encendidos.</td><td class="n">Δ 50 kWh</td></tr>
+    <tr><td><code>nivel_ocupacion_diurna</code></td><td>Reducido</td><td>La presencia de día añade consumo diurno.</td><td class="n">Δ 35 kWh</td></tr>
+    <tr><td><code>tipo_agua_caliente</code></td><td>Amplio</td><td>Con termo eléctrico toda esa energía pasa por el contador; con gas no; la solar térmica solo usa apoyo eléctrico puntual.</td><td class="n">Δ 149 kWh</td></tr>
+    <tr><td><code>paneles_solares</code></td><td>Amplio</td><td>La vivienda produce parte de su electricidad y toma menos de la red.</td><td class="n">Δ 89 kWh</td></tr>
+    <tr><td><code>tipo_vivienda</code></td><td>Amplio</td><td>Una casa tiene más fachada expuesta que un piso y pierde más calor.</td><td class="n">Δ 41 kWh</td></tr>
+  </tbody>
+</table>
+<p class="tnote">r = correlación de Pearson con el consumo · Δ = diferencia de consumo medio entre la categoría que más consume y la que menos.</p>
+</div>
+
+<h2 id="c5-3"><span class="n">5.3</span>Verificación con los datos</h2>
+<p>Las variables numéricas elegidas están entre las de mayor correlación (Figura 05). Las únicas que las superan, <code>potencia_contratada_kw</code> y <code>habitaciones</code>, se descartan por redundantes (apartado 5.4). Entre las categóricas, <code>tipo_agua_caliente</code> es la que más separa el consumo: 665 kWh con termo eléctrico, 575 kWh con gas y 516 kWh con solar (Figura 06).</p>
+
+<figure id="f5" class="narrow">
+  <img src="img/05-correlaciones.png" alt="Correlación de cada variable numérica con el consumo en JupyterLab">
+  <figcaption><b>Figura 05</b>Correlación con el consumo; en azul, las seleccionadas · <span>JupyterLab</span></figcaption>
+</figure>
+
+<p>La verificación también <strong>corrigió la intuición inicial</strong>. En una casa real, la calefacción y el aire acondicionado son grandes consumidores, pero en este dataset apenas cambian el consumo medio (17 y 1 kWh de diferencia) y las temperaturas tienen una correlación de solo −0,08. Por eso no se incluyen, aunque la lógica las habría propuesto.</p>
+
+<figure id="f6">
+  <img src="img/06-categoricas.png" alt="Consumo medio por categoría en JupyterLab">
+  <figcaption><b>Figura 06</b>Consumo medio por categoría de las variables seleccionadas · <span>JupyterLab</span></figcaption>
+</figure>
+
+<h2 id="c5-4"><span class="n">5.4</span>Variables descartadas</h2>
+<div class="tbl" id="t5">
+<table>
+  <caption><b>Tabla 05</b>Variables descartadas y motivo</caption>
+  <thead><tr><th style="width:34%">Variable</th><th style="width:20%">Criterio</th><th>Evidencia</th></tr></thead>
+  <tbody>
+    <tr><td><code>habitaciones</code></td><td>Redundante</td><td>Correlación de 0,85 con <code>superficie_m2</code>.</td></tr>
+    <tr><td><code>potencia_contratada_kw</code></td><td>Redundante</td><td>Correlación de 0,78 con <code>numero_personas</code>; además es consecuencia del consumo previsto, no su causa.</td></tr>
+    <tr><td><code>tipo_tarifa</code></td><td>Precio, no energía</td><td>Cambia lo que se paga, no los kWh (Δ 6 kWh).</td></tr>
+    <tr><td><code>zona_climatica</code>, <code>mes</code></td><td>Indicador</td><td>Misma temperatura en todas las zonas y meses (Δ 7 kWh; r = −0,01).</td></tr>
+    <tr><td><code>edad_vivienda_anios</code></td><td>Indicador</td><td>Aproximación del aislamiento (r = 0,05).</td></tr>
+    <tr><td>Temperaturas, calefacción, aislamiento, aire acondicionado</td><td>Sin efecto</td><td>r ≈ −0,08; Δ de 17, 5 y 1 kWh.</td></tr>
+    <tr><td><code>dias_facturacion</code>, <code>anio</code></td><td>Efecto mínimo</td><td>r = 0,09 y −0,01.</td></tr>
+    <tr><td><code>id_registro</code></td><td>Enunciado</td><td>Solo identifica la fila.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ================= 6 ================= -->
+<h1 class="ch" id="c6"><span class="n">06<i></i></span><span class="t">Preparación de los datos</span></h1>
+
+<h2 id="c6-1"><span class="n">6.1</span>División en entrenamiento y test</h2>
+<p>Un modelo evaluado con los mismos datos con los que aprende puede obtener un error casi nulo memorizándolos, sin saber predecir viviendas nuevas. Es el <strong>sobreajuste</strong> (<em>overfitting</em>). Por eso se reservan datos que el modelo nunca ve: su error en ellos mide la capacidad real de predicción.</p>
+<p>Siguiendo el enunciado, el 70 % (<strong>20.957 filas</strong>) se usa para entrenar y el 30 % (<strong>8.982</strong>) para evaluar, con <code>random_state=42</code> para que la división sea reproducible.</p>
+
+<h2 id="c6-2"><span class="n">6.2</span>Codificación de las categóricas</h2>
+<p>Numerar categorías (Piso = 0, Casa = 1, Adosado = 2) haría creer al modelo que existe un orden y unas distancias que no son reales: que un adosado es «el doble» que una casa. <strong>One-Hot Encoding</strong> crea una columna de 0 y 1 por categoría, de modo que ninguna es «mayor» que otra.</p>
+
+<div class="tbl" id="t6">
+<table>
+  <caption><b>Tabla 06</b>Transformación aplicada a cada tipo de variable</caption>
+  <thead><tr><th style="width:13%">Tipo</th><th style="width:33%">Variables</th><th style="width:15%">Transformación</th><th>Motivo</th></tr></thead>
+  <tbody>
+    <tr><td>Numéricas</td><td><code>numero_personas</code>, <code>superficie_m2</code>, <code>numero_electrodomesticos</code></td><td>StandardScaler</td><td>Misma escala para todas (apartado 6.3).</td></tr>
+    <tr><td>Binarias</td><td><code>teletrabajo</code>, <code>paneles_solares</code></td><td>0 / 1</td><td>Dos valores: no se inventa ningún orden.</td></tr>
+    <tr><td>Nominales</td><td><code>tipo_vivienda</code>, <code>tipo_agua_caliente</code></td><td>One-Hot</td><td>No hay orden entre categorías.</td></tr>
+    <tr><td>Ordinal</td><td><code>nivel_ocupacion_diurna</code></td><td>One-Hot</td><td>Tiene orden, pero el efecto no es lineal: Baja (597 kWh) y Media (596 kWh) consumen igual; solo Alta (631 kWh) sube.</td></tr>
+  </tbody>
+</table>
+</div>
+<p><code>nivel_ocupacion_diurna</code> merece explicación: al tener orden real (Baja &lt; Media &lt; Alta), lo habitual sería codificarla como 0, 1 y 2. Pero eso supone saltos iguales entre niveles, y los datos muestran que todo el efecto está en «Alta». Con One-Hot cada nivel recibe su propio efecto. Tras codificar, el conjunto reducido pasa de 5 variables a <strong>7 columnas</strong> y el amplio de 8 a <strong>14</strong>.</p>
+
+<h2 id="c6-3"><span class="n">6.3</span>Escalado y pipeline</h2>
+<p>La superficie va de 30 a 284 y el número de personas de 1 a 8. Sin escalar, los modelos que combinan pesos darían más importancia a la superficie solo porque sus números son mayores. <code>StandardScaler</code> deja cada variable numérica con media 0 y desviación típica 1. Es imprescindible para la red neuronal y facilita leer los coeficientes de la regresión lineal; a los árboles no les hace falta, pero tampoco les perjudica, así que los cuatro modelos comparten el mismo preprocesado.</p>
+<p>El escalado y la codificación se ajustan <strong>solo con el conjunto de entrenamiento</strong>, dentro de un <code>Pipeline</code> que encadena preprocesado y modelo. Si la media y la desviación se calcularan con todos los datos, el modelo recibiría información del test antes de ser evaluado (<em>data leakage</em>) y su error parecería mejor de lo que es (código en el Anexo B).</p>
+
+<!-- ================= 7 ================= -->
+<h1 class="ch" id="c7"><span class="n">07<i></i></span><span class="t">Modelos y métrica</span></h1>
+
+<h2 id="c7-1"><span class="n">7.1</span>Elección de los modelos</h2>
+<p>Se eligieron cuatro algoritmos de <strong>familias diferentes</strong>, es decir, con formas distintas de aprender. Así la comparación permite explicar por qué uno funciona mejor que otro. Se descartó XGBoost: es de la misma familia que Gradient Boosting, daría un resultado casi idéntico y no forma parte de scikit-learn, la biblioteca del enunciado.</p>
+
+<div class="tbl" id="t7">
+<table>
+  <caption><b>Tabla 07</b>Modelos entrenados</caption>
+  <thead><tr><th style="width:15%">Modelo</th><th style="width:30%">Cómo aprende</th><th style="width:33%">Por qué se elige</th><th>Configuración</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Regresión lineal</strong></td><td>Ajusta una fórmula consumo = b₀ + b₁·x₁ + … + bₙ·xₙ.</td><td>Referencia simple e interpretable. Si los complejos no la superan, la relación es lineal.</td><td>Por defecto</td></tr>
+    <tr><td><strong>Random Forest</strong></td><td>Muchos árboles en paralelo sobre muestras aleatorias; promedia sus predicciones.</td><td>Capta relaciones no lineales; promediar reduce la varianza.</td><td>200 árboles</td></tr>
+    <tr><td><strong>Gradient Boosting</strong></td><td>Árboles pequeños en cadena: cada uno corrige el error de los anteriores.</td><td>De los más precisos en datos tabulares.</td><td>100 árboles, profundidad 3</td></tr>
+    <tr><td><strong>Red neuronal (MLP)</strong></td><td>Capas de neuronas que combinan las variables de forma no lineal.</td><td>Aprende relaciones complejas; contrasta con los árboles.</td><td>Capas 64 y 32, <em>early stopping</em></td></tr>
+  </tbody>
+</table>
+</div>
+<p>La red neuronal usa <strong><em>early stopping</em></strong>: reserva parte del entrenamiento como validación y se detiene cuando el error deja de mejorar, lo que evita que memorice los datos.</p>
+
+<h2 id="c7-2"><span class="n">7.2</span>Métrica: MAE</h2>
+<p>El <strong>error absoluto medio</strong> es el promedio de la diferencia, en valor absoluto, entre el consumo real y el predicho: MAE = (1/n) · Σ |yᵢ − ŷᵢ|. Se expresa en kWh y se interpreta directamente: un MAE de 50 significa que el modelo se equivoca de media en 50 kWh por vivienda. Al no elevar los errores al cuadrado, es menos sensible a los valores extremos que el RMSE.</p>
+<p>Como referencia se calculó el MAE de predecir siempre el consumo medio: <strong>115,62 kWh</strong>. Cualquier modelo útil debe quedar claramente por debajo.</p>
+
+<!-- ================= 8 ================= -->
+<h1 class="ch" id="c8"><span class="n">08<i></i></span><span class="t">Resultados</span></h1>
+
+<h2 id="c8-1"><span class="n">8.1</span>MAE por modelo y conjunto</h2>
+<div class="tbl" id="t8">
+<table>
+  <caption><b>Tabla 08</b>MAE en test (kWh) por modelo y conjunto de variables</caption>
+  <thead><tr><th>Modelo</th><th class="n">Reducido (5)</th><th class="n">Amplio (8)</th><th class="n">Mejora (kWh)</th><th class="n">Mejora</th></tr></thead>
+  <tbody>
+    <tr><td>Red neuronal (MLP)</td><td class="n">73,80</td><td class="n best">49,08</td><td class="n">24,73</td><td class="n">33,5 %</td></tr>
+    <tr><td>Gradient Boosting</td><td class="n">74,16</td><td class="n">50,08</td><td class="n">24,09</td><td class="n">32,5 %</td></tr>
+    <tr><td>Regresión lineal</td><td class="n best">73,75</td><td class="n">52,57</td><td class="n">21,18</td><td class="n">28,7 %</td></tr>
+    <tr><td>Random Forest</td><td class="n">81,52</td><td class="n">54,69</td><td class="n">26,83</td><td class="n">32,9 %</td></tr>
+  </tbody>
+</table>
+<p class="tnote">● Menor MAE de cada conjunto. Referencia (predecir siempre la media): 115,62 kWh.</p>
+</div>
+<p>Todos los modelos reducen a menos de la mitad el error de la referencia. Con el conjunto amplio gana la <strong>red neuronal (49,08 kWh)</strong>, muy cerca de Gradient Boosting (50,08). Con el reducido, la regresión lineal y la red neuronal empatan en la práctica (73,75 y 73,80). Que el modelo más simple compita con los complejos indica que <strong>el consumo depende de las variables de forma casi lineal</strong>: cuando la relación es casi una recta, los modelos complejos tienen poco extra que descubrir.</p>
+
+<figure id="f7" class="narrow">
+  <img src="img/07-mae.png" alt="Tabla y gráfico de MAE en test en JupyterLab">
+  <figcaption><b>Figura 07</b>MAE en test por modelo y conjunto de variables · <span>JupyterLab</span></figcaption>
+</figure>
+
+<h2 id="c8-2"><span class="n">8.2</span>Sobreajuste</h2>
+<p>Comparar el error en entrenamiento con el de test revela si un modelo ha memorizado los datos: una brecha pequeña indica que generaliza; una grande, que ha sobreajustado.</p>
+
+<div class="tbl" id="t9">
+<table>
+  <caption><b>Tabla 09</b>MAE en entrenamiento y en test, y tiempo de entrenamiento</caption>
+  <thead><tr><th>Conjunto</th><th>Modelo</th><th class="n">MAE train</th><th class="n">MAE test</th><th class="n">Brecha</th><th class="n">Tiempo (s)</th></tr></thead>
+  <tbody>
+    <tr><td>Amplio</td><td>Red neuronal (MLP)</td><td class="n">48,96</td><td class="n">49,08</td><td class="n">0,12</td><td class="n">1,28</td></tr>
+    <tr><td>Amplio</td><td>Gradient Boosting</td><td class="n">48,94</td><td class="n">50,08</td><td class="n">1,14</td><td class="n">0,79</td></tr>
+    <tr><td>Amplio</td><td>Regresión lineal</td><td class="n">52,44</td><td class="n">52,57</td><td class="n">0,13</td><td class="n">0,01</td></tr>
+    <tr><td>Amplio</td><td>Random Forest</td><td class="n">20,38</td><td class="n">54,69</td><td class="n best">34,31</td><td class="n">0,68</td></tr>
+    <tr><td>Reducido</td><td>Regresión lineal</td><td class="n">73,65</td><td class="n">73,75</td><td class="n">0,10</td><td class="n">0,01</td></tr>
+    <tr><td>Reducido</td><td>Red neuronal (MLP)</td><td class="n">73,67</td><td class="n">73,80</td><td class="n">0,13</td><td class="n">0,71</td></tr>
+    <tr><td>Reducido</td><td>Gradient Boosting</td><td class="n">72,81</td><td class="n">74,16</td><td class="n">1,36</td><td class="n">0,60</td></tr>
+    <tr><td>Reducido</td><td>Random Forest</td><td class="n">32,11</td><td class="n">81,52</td><td class="n best">49,41</td><td class="n">0,54</td></tr>
+  </tbody>
+</table>
+<p class="tnote">● Brechas que indican sobreajuste.</p>
+</div>
+<p><strong>Random Forest sobreajusta</strong>: con el conjunto amplio se equivoca 20 kWh en entrenamiento y 55 kWh en test. Por defecto, cada árbol crece sin límite y puede acabar en hojas con una sola vivienda; entonces «predice» copiando su consumo exacto, incluido el ruido aleatorio. Gradient Boosting no sufre este problema porque usa árboles pequeños (profundidad 3), y la red neuronal tampoco, gracias a <em>early stopping</em>.</p>
+
+<h2 id="c8-3"><span class="n">8.3</span>Corrección de Random Forest</h2>
+<p>La solución es <strong>limitar la complejidad de los árboles</strong>, no reducir los datos: con menos ejemplos memorizar es todavía más fácil. Se ajustaron dos hiperparámetros:</p>
+<ul>
+  <li><code>min_samples_leaf</code>: mínimo de viviendas por hoja. La predicción pasa a ser el promedio de varias viviendas parecidas.</li>
+  <li><code>max_depth</code>: máximo de preguntas encadenadas en cada árbol.</li>
+</ul>
+<p>Se probaron 15 combinaciones con <code>GridSearchCV</code> y <strong>validación cruzada de 5 particiones sobre el entrenamiento</strong>. El test no interviene en la elección: si se usara para decidir, el modelo se adaptaría también a él y su error dejaría de ser una medida honesta.</p>
+
+<div class="tbl" id="t10">
+<table>
+  <caption><b>Tabla 10</b>Random Forest antes y después del ajuste (conjunto amplio)</caption>
+  <thead><tr><th>Configuración</th><th class="n">MAE train</th><th class="n">MAE test</th><th class="n">Brecha</th></tr></thead>
+  <tbody>
+    <tr><td>Por defecto · sin límite de profundidad, 1 vivienda por hoja</td><td class="n">20,38</td><td class="n">54,69</td><td class="n">34,31</td></tr>
+    <tr><td>Ajustada · <code>max_depth=12</code>, <code>min_samples_leaf=5</code></td><td class="n">43,24</td><td class="n">52,60</td><td class="n best">9,36</td></tr>
+  </tbody>
+</table>
+</div>
+<p>El error de entrenamiento <strong>sube</strong>, porque memoriza menos, y el de test <strong>baja</strong>, porque generaliza mejor: la brecha pasa de 34,3 a 9,4 kWh. Aun así, Random Forest sigue por detrás de la red neuronal y de Gradient Boosting.</p>
+
+<figure id="f8" class="narrow">
+  <img src="img/08-rf-ajuste.png" alt="Resultados de GridSearchCV de Random Forest en JupyterLab">
+  <figcaption><b>Figura 08</b>GridSearchCV y Random Forest antes y después del ajuste · <span>JupyterLab</span></figcaption>
+</figure>
+
+<h2 id="c8-4"><span class="n">8.4</span>Validación cruzada e importancia</h2>
+<p>Entre la red neuronal y Gradient Boosting hay solo 1 kWh, y una única división en entrenamiento y test podría favorecer a uno por azar. Para comprobarlo se repitió la evaluación con <strong>validación cruzada de 5 particiones</strong>: cada modelo se evalúa cinco veces, cada vez sobre una parte distinta del entrenamiento.</p>
+
+<div class="tbl" id="t11">
+<table>
+  <caption><b>Tabla 11</b>MAE con validación cruzada de 5 particiones (conjunto amplio)</caption>
+  <thead><tr><th>Modelo</th><th class="n">MAE medio</th><th class="n">Desv. típica</th><th class="n">MAE en cada partición</th></tr></thead>
+  <tbody>
+    <tr><td>Red neuronal (MLP)</td><td class="n best">49,14</td><td class="n">0,66</td><td class="n">49,4 · 49,5 · 49,0 · 47,9 · 49,9</td></tr>
+    <tr><td>Gradient Boosting</td><td class="n">50,09</td><td class="n">0,58</td><td class="n">50,2 · 50,3 · 50,2 · 49,0 · 50,7</td></tr>
+    <tr><td>Regresión lineal</td><td class="n">52,47</td><td class="n">0,76</td><td class="n">52,7 · 52,5 · 52,9 · 51,0 · 53,2</td></tr>
+    <tr><td>Random Forest (ajustado)</td><td class="n">52,99</td><td class="n">0,50</td><td class="n">53,1 · 53,1 · 53,3 · 52,0 · 53,5</td></tr>
+  </tbody>
+</table>
+</div>
+<p>La red neuronal gana <strong>en las cinco particiones</strong>: la diferencia es real, no fruto del azar. Pero es pequeña, alrededor de 1 kWh sobre 50, <strong>un 2 %</strong>.</p>
+<p>Gradient Boosting indica además cuánto ha usado cada variable (Figura 09): número de personas (38 %), superficie (22 %), agua caliente eléctrica (16 %), número de electrodomésticos (10 %) y paneles solares (6 %). El propio modelo confirma la selección del capítulo 5, incluidas las variables que se añadieron en el conjunto amplio.</p>
+
+<figure id="f9" class="narrow">
+  <img src="img/09-cv-importancia.png" alt="Validación cruzada e importancia de variables en JupyterLab">
+  <figcaption><b>Figura 09</b>Validación cruzada e importancia de variables en Gradient Boosting · <span>JupyterLab</span></figcaption>
+</figure>
+
+<!-- ================= 9 ================= -->
+<h1 class="ch" id="c9"><span class="n">09<i></i></span><span class="t">Respuestas a las preguntas del enunciado</span></h1>
+
+<h2><span class="n">Q1</span>¿Qué algoritmo ha obtenido el menor MAE?</h2>
+<p>La <strong>red neuronal (MLP) con el conjunto amplio: 49,08 kWh</strong> en test (49,14 kWh de media en validación cruzada). Gradient Boosting queda a 1 kWh. Con el conjunto reducido, el menor MAE es el de la regresión lineal (73,75 kWh), prácticamente empatada con la red neuronal.</p>
+
+<h2><span class="n">Q2</span>¿Qué influencia ha tenido la selección de variables?</h2>
+<p><strong>Ha sido el factor más importante.</strong> Pasar de 5 a 8 variables reduce el MAE entre un <strong>29 % y un 34 %</strong> en los cuatro modelos, mientras que con las mismas variables elegir un algoritmo u otro cambia el error como mucho un 10 %. Las variables añadidas, sobre todo <code>tipo_agua_caliente</code> y <code>paneles_solares</code>, explican una parte del consumo que el conjunto reducido no podía ver, y ningún algoritmo compensa la falta de esa información.</p>
+<p>La selección también decide qué modelo gana: con pocas variables basta la regresión lineal; con más, los modelos que combinan información (red neuronal y Gradient Boosting) sacan ventaja.</p>
+
+<h2><span class="n">Q3</span>¿Qué modelo se elegiría para producción?</h2>
+<p><strong>Gradient Boosting con el conjunto amplio.</strong> El modelo con menor error no es necesariamente el mejor para producción: también cuentan la estabilidad, la capacidad de explicar la predicción y el riesgo de mantenimiento.</p>
+
+<div class="tbl" id="t12">
+<table>
+  <caption><b>Tabla 12</b>Comparativa para producción (conjunto amplio)</caption>
+  <thead><tr><th style="width:20%">Modelo</th><th class="n" style="width:10%">MAE test</th><th style="width:34%">¿Se puede explicar?</th><th>Riesgo principal</th></tr></thead>
+  <tbody>
+    <tr><td>Red neuronal (MLP)</td><td class="n">49,08</td><td>Difícil: miles de pesos sin significado interpretable.</td><td>Muy sensible a su configuración.</td></tr>
+    <tr><td><strong>Gradient Boosting</strong></td><td class="n best">50,08</td><td>Sí: importancia de cada variable.</td><td>Bajo; estable entre particiones.</td></tr>
+    <tr><td>Regresión lineal</td><td class="n">52,57</td><td>Totalmente: un coeficiente por variable.</td><td>No capta relaciones no lineales.</td></tr>
+    <tr><td>Random Forest (ajustado)</td><td class="n">52,60</td><td>Sí: importancia de cada variable.</td><td>Sobreajusta si no se limita.</td></tr>
+  </tbody>
+</table>
+<p class="tnote">● Modelo recomendado.</p>
+</div>
+<p>Gradient Boosting está a solo un <strong>2 %</strong> del mejor error, ha sido estable en las cinco particiones y permite explicar qué variables pesan en cada predicción, algo necesario si una comercializadora debe justificar una estimación ante un cliente. La red neuronal predice algo mejor, pero es una «caja negra»: su resultado sale de miles de pesos combinados de forma no lineal, ninguno con un significado que una persona pueda interpretar, y su rendimiento depende mucho de la configuración elegida.</p>
+<p>El tiempo de entrenamiento no decide (0,8 s frente a 1,3 s): en producción un modelo se entrena pocas veces y ambos predicen de forma instantánea.</p>
+
+<!-- ================= 10 ================= -->
+<h1 class="ch" id="c10"><span class="n">10<i></i></span><span class="t">Conclusiones</span></h1>
+<ul class="keep">
+  <li><strong>Elegir bien los datos vale más que elegir el algoritmo.</strong> Ampliar de 5 a 8 variables justificadas redujo el error alrededor de un 32 %; cambiar de algoritmo, como mucho un 10 %.</li>
+  <li><strong>La intuición propone, pero los datos deciden.</strong> La calefacción y el aire acondicionado parecían relevantes y no lo eran en este dataset; el teletrabajo y el tipo de agua caliente sí.</li>
+  <li><strong>Un error bajo en entrenamiento no garantiza un buen modelo.</strong> Random Forest tenía el menor error de entrenamiento y era el que peor generalizaba; limitar sus árboles redujo la brecha de 34 a 9 kWh.</li>
+  <li><strong>El mejor modelo para producción equilibra precisión y explicabilidad.</strong> Gradient Boosting, con un MAE de 50 kWh frente a los 116 kWh de no usar ningún modelo (un 57 % menos), es la opción recomendada.</li>
+</ul>
+
+<!-- ================= 11 ================= -->
+<h1 class="ch" id="c11"><span class="n">11<i></i></span><span class="t">Bibliografía y webgrafía</span></h1>
+<ul class="refs">
+  <li>Breiman, L. (2001). Random forests. <em>Machine Learning, 45</em>(1), 5–32. https://doi.org/10.1023/A:1010933404324</li>
+  <li>Friedman, J. H. (2001). Greedy function approximation: A gradient boosting machine. <em>The Annals of Statistics, 29</em>(5), 1189–1232. https://doi.org/10.1214/aos/1013203451</li>
+  <li>Google. (s. f.). <em>Google Colaboratory</em>. Recuperado el 11 de noviembre de 2026, de https://colab.research.google.com</li>
+  <li>pandas development team. (s. f.). <em>pandas User Guide</em>. Recuperado el 10 de noviembre de 2026, de https://pandas.pydata.org/docs/user_guide/</li>
+  <li>Pedregosa, F., Varoquaux, G., Gramfort, A., Michel, V., Thirion, B., Grisel, O., … Duchesnay, É. (2011). Scikit-learn: Machine learning in Python. <em>Journal of Machine Learning Research, 12</em>, 2825–2830.</li>
+  <li>scikit-learn developers. (s. f.). <em>Common pitfalls and recommended practices</em>. Recuperado el 10 de noviembre de 2026, de https://scikit-learn.org/stable/common_pitfalls.html</li>
+  <li>scikit-learn developers. (s. f.). <em>Cross-validation: evaluating estimator performance</em>. Recuperado el 10 de noviembre de 2026, de https://scikit-learn.org/stable/modules/cross_validation.html</li>
+  <li>scikit-learn developers. (s. f.). <em>Supervised learning</em>. Recuperado el 10 de noviembre de 2026, de https://scikit-learn.org/stable/supervised_learning.html</li>
+</ul>
+
+<!-- ================= ANEXOS ================= -->
+<h1 class="ch break" id="ca"><span class="n">A<i></i></span><span class="t">Anexo A. Archivos y reproducción</span></h1>
+<div class="tbl" id="t13">
+<table>
+  <caption><b>Tabla 13</b>Archivos entregados</caption>
+  <thead><tr><th style="width:42%">Archivo</th><th>Contenido</th></tr></thead>
+  <tbody>
+    <tr><td><code>consumo_electrico.ipynb</code></td><td>Cuaderno ejecutable con las ocho partes de la práctica, comentado.</td></tr>
+    <tr><td><code>dataset_consumo_electrico_30000.csv</code></td><td>Datos de entrada proporcionados.</td></tr>
+    <tr><td><code>memoria.pdf</code></td><td>Este documento.</td></tr>
+    <tr><td><code>img/</code></td><td>Capturas utilizadas en la memoria.</td></tr>
+  </tbody>
+</table>
+</div>
+<h3 style="margin-left:calc(var(--rail) + var(--gap))">Reproducir en Google Colab</h3>
+<ol>
+  <li>Archivo → Subir cuaderno → <code>consumo_electrico.ipynb</code>.</li>
+  <li>Entorno de ejecución → Ejecutar todas.</li>
+  <li>Cuando la celda 1.1 lo pida, subir <code>dataset_consumo_electrico_30000.csv</code>.</li>
+</ol>
+<h3 style="margin-left:calc(var(--rail) + var(--gap))">Reproducir en local</h3>
+<pre>python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+jupyter lab</pre>
+
+<h1 class="ch" id="cb"><span class="n">B<i></i></span><span class="t">Anexo B. Código principal</span></h1>
+<p><strong>Preprocesado.</strong> Construye la codificación y el escalado para cualquier lista de variables, de modo que los dos conjuntos reciben exactamente el mismo tratamiento. <code>handle_unknown="ignore"</code> evita errores si en producción aparece una categoría nueva.</p>
+<pre><span class="k">def</span> make_preprocessor(features):
+    numericas = [c <span class="k">for</span> c <span class="k">in</span> features <span class="k">if</span> c <span class="k">in</span> num_cols]
+    binarias = [c <span class="k">for</span> c <span class="k">in</span> features <span class="k">if</span> c <span class="k">in</span> BINARIAS]
+    nominales = [c <span class="k">for</span> c <span class="k">in</span> features
+                 <span class="k">if</span> c <span class="k">in</span> cat_cols <span class="k">and</span> c <span class="k">not in</span> BINARIAS]
+    <span class="k">return</span> ColumnTransformer([
+        (<span class="c">"num"</span>, StandardScaler(), numericas),
+        (<span class="c">"bin"</span>, OneHotEncoder(drop=<span class="c">"if_binary"</span>), binarias),
+        (<span class="c">"cat"</span>, OneHotEncoder(handle_unknown=<span class="c">"ignore"</span>), nominales),
+    ])</pre>
+<p><strong>Entrenamiento y evaluación.</strong> Cada modelo se encadena con su preprocesado en un <code>Pipeline</code>. Al llamar a <code>fit</code> con el entrenamiento, el escalado y la codificación aprenden solo de esos datos; después se mide el MAE en entrenamiento y en test para detectar el sobreajuste.</p>
+<pre><span class="k">for</span> nombre_set, features <span class="k">in</span> CONJUNTOS.items():
+    <span class="k">for</span> nombre_modelo, modelo <span class="k">in</span> make_models().items():
+        pipe = Pipeline([(<span class="c">"prep"</span>, make_preprocessor(features)),
+                         (<span class="c">"model"</span>, modelo)])
+        pipe.fit(X_train[features], y_train)
+        mae_train = mean_absolute_error(y_train, pipe.predict(X_train[features]))
+        mae_test = mean_absolute_error(y_test, pipe.predict(X_test[features]))</pre>
+<p><strong>Ajuste de Random Forest.</strong> <code>GridSearchCV</code> prueba todas las combinaciones con validación cruzada sobre el entrenamiento y se queda con la de menor MAE de validación.</p>
+<pre>grid = GridSearchCV(
+    rf_pipe,
+    param_grid={<span class="c">"model__min_samples_leaf"</span>: [1, 5, 20, 50, 100],
+                <span class="c">"model__max_depth"</span>: [None, 8, 12]},
+    scoring=<span class="c">"neg_mean_absolute_error"</span>, cv=5,
+)
+grid.fit(X_train[SET_AMPLIO], y_train)</pre>
+
+</main>
+</body>
+</html>
